@@ -66,6 +66,13 @@ public class Loan {
     private LocalDate startDate;                // 2021-01-01
     private LocalDate endDate;                  // 2021-12-31               [calculated]
 
+    private boolean firstTimeHomeBuyer;
+
+    private double MunicipalLandTransferTax;
+    private double ProvincialLandTransferTax;
+
+    private double landTransferTaxRebate;       // Optional: Land transfer tax rebate (for first-time home buyers).
+
     private Double payment;                     // Regular payment amount.
 
     private Double totalInterest;               // Total interest paid over the term [calculated].

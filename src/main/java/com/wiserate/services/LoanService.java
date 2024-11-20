@@ -11,10 +11,13 @@ import java.util.List;
 public class LoanService {
 
     private final LoanRepository loanRepository;
+    private final LoanCalculatorService loanCalculatorService;
+
 
     @Autowired
-    public LoanService(LoanRepository loanRepository) {
+    public LoanService(LoanRepository loanRepository, LoanCalculatorService loanCalculatorService) {
         this.loanRepository = loanRepository;
+        this.loanCalculatorService = loanCalculatorService;
     }
 
     // get all user loans data [via user ID]
@@ -43,7 +46,12 @@ public class LoanService {
         return 0;
     }
 
-    // calculate loan
+    // calculate loan equal periodic payment
+    public double calculatePeriodicPayment(Loan loan) {
+        // calculate periodic payment
+        double amount = loanCalculatorService.calculatePeriodicPayment(loan);
+        return amount;
+    }
 
     // keep methods separate so they can be tested individually and used by other
 

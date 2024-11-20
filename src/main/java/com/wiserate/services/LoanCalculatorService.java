@@ -63,7 +63,7 @@ public class LoanCalculatorService {
 
     // Calculate equal amount of payment for full term of loan
     public double calculatePeriodicPayment(Loan loan) {
-        double  principal               = loan.getPrincipal();
+        double  principal               = loan.getPrincipal() - loan.getDownPayment();
         double  annualRate              = loan.getAnnualInterestRate() / 100.0;
 
         int     termInMonths            = loan.getLoanTermMonths();
@@ -99,6 +99,67 @@ public class LoanCalculatorService {
 
 
     }
+
+
+    // getProvincialTaxRate based on province
+// Method to get the maximum tax rebate for a province
+    public double getMaxTaxRebate(String province, String municipality) {
+        return switch (province) {
+            case "AB" -> 0.0;
+            case "BC" -> 8000.0;
+            case "MB" -> 0.0;
+            case "NB" -> 0.0;
+            case "NL" -> 0.0;
+            case "NS" -> 0.0;
+            case "NT" -> 0.0;
+            case "NU" -> 0.0;
+            case "ON" -> {
+                double provincialRebate = 4000.0;
+                double municipalRebate = switch (municipality.toUpperCase()) {
+                    case "TORONTO" -> 4475.0;
+                    default -> 0.0;
+                };
+                yield provincialRebate + municipalRebate;
+            }
+            case "PE" -> 2000.0;
+            case "QC" -> 0.0;
+            case "SK" -> 0.0;
+            case "YT" -> 0.0;
+            default -> 0.0;
+//            throw new IllegalArgumentException("Invalid province code: " + province);
+        };
+    }
+
+
+
+
+
+
+    // Calculate Land Transfer Tax Ontario
+    public double calculateLandTransferTax(double propertyValue, boolean firstTimeHomeBuyer) {
+        if (firstTimeHomeBuyer) return 0; // First-time home buyers are exempt from land transfer tax
+        /*
+        0.5% on amounts up to and including $55,000
+        1.0% on amounts exceeding $55,000, up to and including $250,000
+        1.5% on amounts exceeding $250,000, up to and including $400,000
+        2.0% on amounts exceeding $400,000
+        2.5% on amounts exceeding $2 million
+         */
+        double tax = 0;
+        if (propertyValue <= 55000) {
+            tax = propertyValue * 0.005;
+        } else if (propertyValue <= 250000) {
+            tax = 55000 * 0.005 + (propertyValue - 55000) * 0.01;
+        } else if (propertyValue <= 400000) {
+            tax = 55000 * 0.005 + (250000 - 55000) * 0.01 + (propertyValue - 250000) * 0.015;
+        } else if (propertyValue <= 2000000) {
+            tax = 55000 * 0.005 + (250000 - 55000) * 0.01 + (400000 - 250000) * 0.015 + (propertyValue - 400000) * 0.02;
+        } else {
+            tax = 55000 * 0.005 + (250000 - 55000) * 0.01 + (400000 - 250000) * 0.015 + (2000000 - 400000) * 0.02 + (propertyValue - 2000000) * 0.025;
+        }
+        return tax;
+    }
+
 
     // Calculate loan term (in years) based on principal, interest rate, and monthly payment
     public double calculateLoanTerm(double principal, double annualInterestRate, double monthlyPayment) {
