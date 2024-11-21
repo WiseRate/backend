@@ -3,6 +3,7 @@ package com.wiserate;
 import com.wiserate.enums.LoanTypes;
 import com.wiserate.enums.PaymentFrequency;
 import com.wiserate.enums.ProvinceCA;
+import com.wiserate.helpers.LandTransferTax;
 import com.wiserate.models.Loan;
 import com.wiserate.services.LoanCalculatorService;
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class LoanCalculatorTest {
 
     // Create an instance of the class that contains the function
-    private final LoanCalculatorService loanCalculator = new LoanCalculatorService();
+    private final LoanCalculatorService loanCalculator;
+    private final LandTransferTax landTransferTax;
+
+
+    public LoanCalculatorTest(LoanCalculatorService loanCalculator, LandTransferTax landTransferTax) {
+        this.loanCalculator = loanCalculator;
+        this.landTransferTax = landTransferTax;
+    }
 
     @Test
     void testCalculatePeriodicPayment_simpleInterest() {
@@ -117,5 +125,19 @@ public class LoanCalculatorTest {
         );
 
         assertEquals(expectedPayment, actualPayment, 0.01, "Short-term payment mismatch.");
+    }
+
+
+    @Test
+    void testCalculateLandTransferTax() {
+        double price = 1000000; // Example property price
+        ProvinceCA province = ProvinceCA.ONTARIO; // Example province
+        double expectedTax = 32950; // Expected land transfer tax
+
+        double actualTax = landTransferTax.ontario(price);
+        System.out.println("Expected tax: " + expectedTax);
+        System.out.println("Actual tax: " + actualTax);
+
+        assertEquals(expectedTax, actualTax, 0.01, "Land transfer tax does not match expected value.");
     }
 }

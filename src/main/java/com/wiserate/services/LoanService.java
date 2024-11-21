@@ -46,11 +46,10 @@ public class LoanService {
         return 0;
     }
 
-    // calculate loan equal periodic payment
-    public double calculatePeriodicPayment(Loan loan) {
-        // calculate periodic payment
-        double amount = loanCalculatorService.calculatePeriodicPayment(loan);
-        return amount;
+    // NOT-LOGIN
+    public Loan initializeLoan(Loan loan) {
+        loan = loanCalculatorService.initialize(loan);
+        return loan;
     }
 
     // keep methods separate so they can be tested individually and used by other

@@ -2,7 +2,10 @@ package com.wiserate.services;
 
 import com.wiserate.enums.InterestType;
 import com.wiserate.enums.PaymentFrequency;
+import com.wiserate.enums.ProvinceCA;
+import com.wiserate.helpers.LandTransferTax;
 import com.wiserate.models.Loan;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -10,16 +13,103 @@ import java.time.LocalDate;
 @Service
 public class LoanCalculatorService {
 
+    private final LandTransferTax landTransferTax;
 
-    // convert years to months
-    /*
-    public int convertYearsToMonths(double years) {
-        int fullYears = (int) years;
-        int remainingMonths = (int) ((years - fullYears) * 12);
-        return fullYears * 12 + remainingMonths;
+    public LoanCalculatorService(LandTransferTax landTransferTax) {
+        this.landTransferTax = landTransferTax;
     }
-    */
 
+    // initialize all data into the Loan object
+    public Loan initialize(Loan loan) {
+
+        // PROPERTY REAL VALUE
+        double propertyValue = loan.getTotalLoanAmount();
+
+        // CMHC INSURANCE
+        double cmhcInsurance = calculatePremium(propertyValue, calculateDownPaymentPercentage(loan.getDownPayment(), propertyValue));
+        loan.setCmhcInsurance(cmhcInsurance);
+
+        // SET PRINCIPAL
+        loan.setPrincipal(propertyValue - loan.getDownPayment() + cmhcInsurance);
+
+        // SET ANNUAL INTEREST RATE
+        loan.setAnnualInterestRate(loan.getAnnualInterestRate() / 100.0);
+
+        // CALCULATE EQUAL PERIODIC PAYMENT
+        double periodicPayment = calculatePeriodicPayment(loan);
+
+        // SET PERIODIC PAYMENT
+        loan.setPeriodicPayment(periodicPayment);
+
+        // TOTAL INTEREST
+        loan.setTotalInterest(periodicPayment * loan.getLoanTermMonths() - loan.getPrincipal());
+
+        // Set Ontario if province is null
+        if (loan.getProvince() == null) {
+            loan.setProvince(ProvinceCA.ON);
+        }
+
+        // SET MUNICIPALITY
+        if (loan.getMunicipality() == null) {
+            loan.setMunicipality("toronto");
+        }
+
+        // LAND TRANSFER TAX
+        double provincialLandTransferTax = landTransferTax.calculate(propertyValue, loan.getProvince().toString());
+        loan.setProvincialLandTransferTax(provincialLandTransferTax);
+
+        // MUNICIPAL LAND TRANSFER TAX [ONLY TORONTO]
+        double municipalLandTransferTax = 0.0;
+        if (loan.getMunicipality().equalsIgnoreCase("toronto")) {
+            municipalLandTransferTax = landTransferTax.calculate(propertyValue, "toronto");
+        }
+        loan.setMunicipalLandTransferTax(municipalLandTransferTax);
+
+        // LAWYER FEE
+        if (loan.getLawyerFee() == 0.0) {
+            loan.setLawyerFee(1000.0);
+        }
+
+        // MAXIMUM TAX REBATE [ FIRST TIME HOME BUYER ]
+        double maxTaxRebate = 0.0;
+        if (loan.isNewHomeBuyer() && loan.getProvince() == ProvinceCA.ON) {
+            maxTaxRebate = getMaxTaxRebate(loan.getProvince().toString(), loan.getMunicipality());
+        } else if (loan.isNewHomeBuyer()) {
+            maxTaxRebate = getMaxTaxRebate(loan.getProvince().toString());
+        }
+
+        // PROVINCIAL SALES TAX [ PST ]
+        double pst = calculatePST(cmhcInsurance, loan.getProvince().toString());
+        loan.setProvincialSalesTax(pst);
+
+        double finalLandTransferTax = provincialLandTransferTax + municipalLandTransferTax - maxTaxRebate;
+
+        // CASH TO CLOSE
+        double cashToClose = loan.getDownPayment()
+                + finalLandTransferTax
+                + loan.getProvincialSalesTax()
+                + loan.getLawyerFee()
+                + loan.getTitleInsurance()
+                + loan.getHomeInspectionFee()
+                + loan.getAppraisalFee()
+                + loan.getOtherFees();
+
+        loan.setCashToClose(cashToClose);
+
+        // SET TOTAL PAYMENT
+        loan.setTotalPayment(loan.getPeriodicPayment() * loan.getLoanTermMonths());
+
+        // START DATE TODAY IF NULL
+        if (loan.getStartDate() == null) {
+            loan.setStartDate(LocalDate.now());
+        }
+
+        // END DATE
+        loan.setEndDate(calculateEndDate(loan.getStartDate(), loan.getLoanTermMonths() / 12));
+
+        // RETURN LOAN
+        return loan;
+    }
 
     // function that convert PaymentFrequency to frequencyFactor
     private int calculatePaymentsPerYear(PaymentFrequency frequency) {
@@ -36,16 +126,6 @@ public class LoanCalculatorService {
     }
 
     // Calculating equal periodic payment for compound interest when compounding frequency is different from payment frequency and principal is given
-    /**
-     * Calculates equal periodic payments for a loan with compound interest.
-     *
-     * @param principal              Principal amount of the loan.
-     * @param annualRate             Annual interest rate (as a decimal, e.g., 0.05 for 5%).
-     * @param compoundingFrequency   Number of compounding periods per year.
-     * @param termInYears            Loan term in years.
-     * @param paymentsPerYear        Number of payment periods per year.
-     * @return                       Equal periodic payment amount.
-     */
     public double calculatePeriodicPaymentCompoundInterest(double principal, double annualRate, int compoundingFrequency, double termInYears, int paymentsPerYear) {
         if (principal <= 0 || annualRate <= 0 || compoundingFrequency <= 0 || termInYears <= 0 || paymentsPerYear <= 0) {
             System.out.println("Principal: " + principal + "\tAnnual Rate: " + annualRate + "\tCompounding Frequency: " + compoundingFrequency + "\tTerm in Years: " + termInYears + "\tPayments per Year: " + paymentsPerYear);
@@ -56,20 +136,18 @@ public class LoanCalculatorService {
 
         System.out.println("Effective Rate: " + effectiveRate + "\tTotal Payments: " + totalPayments);
 
-        // Calculate periodic payment using the annuity formula
-        return Math.round((principal * effectiveRate) / (1 - Math.pow(1 + effectiveRate, -totalPayments))*100.0)/100.0;
+        return Math.round((principal * effectiveRate) / (1 - Math.pow(1 + effectiveRate, -totalPayments)) * 100.0) / 100.0;
     }
-
 
     // Calculate equal amount of payment for full term of loan
     public double calculatePeriodicPayment(Loan loan) {
-        double  principal               = loan.getPrincipal() - loan.getDownPayment();
-        double  annualRate              = loan.getAnnualInterestRate() / 100.0;
+        double principal = loan.getPrincipal();
+        double annualRate = loan.getAnnualInterestRate();
 
-        int     termInMonths            = loan.getLoanTermMonths();
-        double  termInYears             = (double) termInMonths /12;
+        int termInMonths = loan.getLoanTermMonths();
+        double termInYears = (double) termInMonths / 12;
 
-        boolean isCompoundInterest      = loan.getIsCompoundInterest();
+        boolean isCompoundInterest = loan.getIsCompoundInterest();
 
         int paymentsPerYear = calculatePaymentsPerYear(loan.getPaymentFrequency());
 
@@ -77,7 +155,7 @@ public class LoanCalculatorService {
 
         if (isCompoundInterest) {
 
-            int compoundingFrequency    = loan.getCompoundFrequency();
+            int compoundingFrequency = loan.getCompoundFrequency();
 
             periodicPayment = calculatePeriodicPaymentCompoundInterest(
                     principal,
@@ -92,27 +170,21 @@ public class LoanCalculatorService {
             // Total number of payments
             int totalPayments = (int) (termInMonths / (12.0 / paymentsPerYear));
             // Calculate periodic payment
-            periodicPayment = Math.round(totalAmount / totalPayments * 100.0) /100.0;
+            periodicPayment = Math.round(totalAmount / totalPayments * 100.0) / 100.0;
         }
-//        System.out.println("Periodic Payment: " + periodicPayment);
         return periodicPayment;
-
-
     }
 
 
-    // getProvincialTaxRate based on province
-// Method to get the maximum tax rebate for a province
+    // REBATE
+    private double getMaxTaxRebate(String province) {
+        return getMaxTaxRebate(province, "");
+    }
+
+    // REBATE OVERLOADED
     public double getMaxTaxRebate(String province, String municipality) {
         return switch (province) {
-            case "AB" -> 0.0;
             case "BC" -> 8000.0;
-            case "MB" -> 0.0;
-            case "NB" -> 0.0;
-            case "NL" -> 0.0;
-            case "NS" -> 0.0;
-            case "NT" -> 0.0;
-            case "NU" -> 0.0;
             case "ON" -> {
                 double provincialRebate = 4000.0;
                 double municipalRebate = switch (municipality.toUpperCase()) {
@@ -122,44 +194,45 @@ public class LoanCalculatorService {
                 yield provincialRebate + municipalRebate;
             }
             case "PE" -> 2000.0;
-            case "QC" -> 0.0;
-            case "SK" -> 0.0;
-            case "YT" -> 0.0;
             default -> 0.0;
 //            throw new IllegalArgumentException("Invalid province code: " + province);
         };
     }
 
 
-
-
-
-
-    // Calculate Land Transfer Tax Ontario
-    public double calculateLandTransferTax(double propertyValue, boolean firstTimeHomeBuyer) {
-        if (firstTimeHomeBuyer) return 0; // First-time home buyers are exempt from land transfer tax
-        /*
-        0.5% on amounts up to and including $55,000
-        1.0% on amounts exceeding $55,000, up to and including $250,000
-        1.5% on amounts exceeding $250,000, up to and including $400,000
-        2.0% on amounts exceeding $400,000
-        2.5% on amounts exceeding $2 million
-         */
-        double tax = 0;
-        if (propertyValue <= 55000) {
-            tax = propertyValue * 0.005;
-        } else if (propertyValue <= 250000) {
-            tax = 55000 * 0.005 + (propertyValue - 55000) * 0.01;
-        } else if (propertyValue <= 400000) {
-            tax = 55000 * 0.005 + (250000 - 55000) * 0.01 + (propertyValue - 250000) * 0.015;
-        } else if (propertyValue <= 2000000) {
-            tax = 55000 * 0.005 + (250000 - 55000) * 0.01 + (400000 - 250000) * 0.015 + (propertyValue - 400000) * 0.02;
-        } else {
-            tax = 55000 * 0.005 + (250000 - 55000) * 0.01 + (400000 - 250000) * 0.015 + (2000000 - 400000) * 0.02 + (propertyValue - 2000000) * 0.025;
+    // CMHC Insurance
+    public double calculatePremium(double totalLoanAmount, double downPaymentPercentage) {
+        // Validate input
+        if (downPaymentPercentage < 0 || downPaymentPercentage > 100) {
+            throw new IllegalArgumentException("Down payment percentage must be between 0 and 100.");
         }
-        return tax;
+
+        // Determine the premium rate based on the down payment percentage
+        double premiumRate = 0.0; // Default is no premium for down payment >= 20%
+        if (downPaymentPercentage >= 5 && downPaymentPercentage < 10) {
+            premiumRate = 0.04; // 4.00%
+        } else if (downPaymentPercentage >= 10 && downPaymentPercentage < 15) {
+            premiumRate = 0.031; // 3.10%
+        } else if (downPaymentPercentage >= 15 && downPaymentPercentage < 20) {
+            premiumRate = 0.028; // 2.80%
+        }
+
+        // Calculate the premium
+        return totalLoanAmount * premiumRate;
     }
 
+
+    // PST
+    public double calculatePST(double cmhcAmount, String province) {
+        double rate = switch (province.toUpperCase()) {
+            case "MB" -> 0.07;
+            case "ON" -> 0.08;
+            case "QC" -> 0.09;
+            case "SK" -> 0.06;
+            default -> 0.0;
+        };
+        return cmhcAmount * rate;
+    }
 
     // Calculate loan term (in years) based on principal, interest rate, and monthly payment
     public double calculateLoanTerm(double principal, double annualInterestRate, double monthlyPayment) {
@@ -183,13 +256,14 @@ public class LoanCalculatorService {
     }
 
     // Calculate end date based on start date and loan term
-    public LocalDate calculateEndDate(LocalDate startDate, int loanTermYears) {
+    public LocalDate calculateEndDate(@NotNull LocalDate startDate, int loanTermYears) {
         return startDate.plusYears(loanTermYears);
     }
 
     // Calculate down payment percentage (optional utility)
     public double calculateDownPaymentPercentage(double downPayment, double totalLoanAmount) {
-        return (downPayment / totalLoanAmount) * 100;
+        double percent = (downPayment / totalLoanAmount) * 100;
+        return Math.round(percent * 100.0) / 100.0;
     }
 
 

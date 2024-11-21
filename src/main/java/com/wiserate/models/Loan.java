@@ -31,7 +31,10 @@ public class Loan {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ProvinceCA province;                // Province of the loan.
+    private ProvinceCA province;
+
+    @Column(nullable = false)
+    private String municipality;
 
     @Column(nullable = false)
     private Double totalLoanAmount;             // 11000/22000/55000 etc.
@@ -63,26 +66,37 @@ public class Loan {
     private PaymentFrequency paymentFrequency;      // Number of payments per year.
 
     @Column(nullable = false)
-    private LocalDate startDate;                // 2021-01-01
-    private LocalDate endDate;                  // 2021-12-31               [calculated]
-
-    private boolean firstTimeHomeBuyer;
-
-    private double MunicipalLandTransferTax;
-    private double ProvincialLandTransferTax;
-
-    private double landTransferTaxRebate;       // Optional: Land transfer tax rebate (for first-time home buyers).
-
-    private Double payment;                     // Regular payment amount.
-
-    private Double totalInterest;               // Total interest paid over the term [calculated].
-    private Double totalPayment;                // Total payment amount (principal + interest) [calculated].
-
-    private Double insurancePremium = 0.0;      // Optional: Monthly insurance for loan protection.
-    private Double propertyTax = 0.0;           // Optional: Monthly property tax (for home loans).
+    private boolean isNewHomeBuyer = false;
 
     @Column(nullable = false)
-    private Boolean isActive = false;                    // Active or not.
+    private LocalDate startDate;                // 2021-01-01
+    private LocalDate endDate;                  // CALCULATED
+
+    // USER INPUT
+    private Double insurancePremium     = 700.0;
+    private Double lawyerFee            = 1000.0;
+    private Double appraisalFee         = 300.0;
+    private Double homeInspectionFee    = 500.0;
+    private Double otherFees            = 0.0;
+    private Double titleInsurance       = 0.0;
+
+    // CALCULATED
+    private Double MunicipalLandTransferTax;
+    private Double ProvincialLandTransferTax;
+    private Double landTransferTaxRebate;
+    private Double provincialSalesTax;
+    private Double propertyTax = 0.0;
+    private Double cmhcInsurance = 0.0;
+
+    private Double periodicPayment;
+    private Double totalInterest;
+
+    private Double cashToClose;
+
+    private Double totalPayment;
+
+    @Column(nullable = false)
+    private Boolean isActive = false;
 
     @UpdateTimestamp
     private LocalDateTime lastUpdated;
