@@ -1,6 +1,8 @@
 package com.wiserate.services;
 
+import com.wiserate.dto.loan.LoanResponseData;
 import com.wiserate.models.Loan;
+import com.wiserate.models.MUser;
 import com.wiserate.repository.LoanRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,13 +32,6 @@ public class LoanService {
         return loanRepository.findById(id).orElse(null);
     }
 
-    // add new loan
-    public Loan addLoan(Loan loan) {
-        return loanRepository.save(loan);
-    }
-
-    // update loan
-
     // delete loan
     public int deleteLoan(Long id) {
         if (loanRepository.existsById(id)) {
@@ -52,7 +47,12 @@ public class LoanService {
         return loan;
     }
 
-    // keep methods separate so they can be tested individually and used by other
+    // save/update loan
+    public LoanResponseData saveLoan(Loan loan) {
+        Loan l = loanRepository.save(loan);
+        LoanResponseData loanResponseData = new LoanResponseData(l);
+        return loanResponseData;
+    }
 
 
 }

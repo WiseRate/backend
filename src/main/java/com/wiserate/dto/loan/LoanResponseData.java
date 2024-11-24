@@ -1,0 +1,33 @@
+package com.wiserate.dto.loan;
+
+import com.wiserate.models.CalculatedAmounts;
+import com.wiserate.models.Loan;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class LoanResponseData {
+    private Long id;
+    private BigDecimal periodicPayment;
+    private BigDecimal cashToClose;
+    private BigDecimal totalInterest;
+    private BigDecimal totalPayment;
+
+    private CalculatedAmounts calculatedAmounts;
+
+    public LoanResponseData(Loan loan) {
+        this.id = loan.getId();
+        this.periodicPayment = loan.getPeriodicPayment();
+        this.cashToClose = loan.getCashToClose();
+        this.totalInterest = loan.getTotalInterest();
+        this.totalPayment = loan.getTotalPayment();
+        this.calculatedAmounts = loan.getCalculatedAmounts();
+    }
+}

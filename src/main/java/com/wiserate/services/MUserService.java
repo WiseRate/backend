@@ -32,10 +32,20 @@ public class MUserService {
         this.userHelper = userHelper;
     }
 
+    // get user by ID
+    public MUser getUserById(Long id) {
+        return mUserRepository.findById(id).orElse(null);
+    }
+
 
     // login validation
     public UserDTO validateUser(Authentication authentication) {
         return userHelper.validateUser(authentication);
+    }
+
+    // get current userID from Authentication
+    public Long getCurrentUserId(Authentication authentication) {
+        return userHelper.validateUser(authentication).getId();
     }
 
 
@@ -73,10 +83,10 @@ public class MUserService {
         mUser.setPassword(passwordEncoder.encode(mUser.getPassword()));
 
         try {
-            System.out.println("USERNAME: " + mUser.getUsername() + "\tPASSWORD: " + mUser.getPassword() + "\tROLE: " + mUser.getRole());
-            System.out.println("TRYING TO SAVE USER");
+            // System.out.println("USERNAME: " + mUser.getUsername() + "\tPASSWORD: " + mUser.getPassword() + "\tROLE: " + mUser.getRole());
+            // System.out.println("TRYING TO SAVE USER");
             MUser newUser = mUserRepository.save(mUser);
-            System.out.println("USER SAVED SUCCESSFULLY");
+            // System.out.println("USER SAVED SUCCESSFULLY");
             return new NewUserResponse(newUser);
         } catch (Exception e) {
             System.out.println("ERROR WHILE SAVING USER: " + e.getMessage());
