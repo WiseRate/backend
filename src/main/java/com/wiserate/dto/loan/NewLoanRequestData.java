@@ -37,19 +37,19 @@ public class NewLoanRequestData {
     private Boolean isCompoundInterest;
 
     @Min(1)
-    private int compoundFrequency = 2;
+    private Integer compoundFrequency = 2;
 
     @Positive
     private BigDecimal annualInterestRate;
 
     @Min(1)
-    private int loanTermMonths;
+    private Integer loanTermMonths;
 
     @NotNull
     private PaymentFrequency paymentFrequency;
 
     @NotNull
-    private boolean newHomeBuyer;
+    private Boolean newHomeBuyer;
 
     @NotNull
     private Fees fees;

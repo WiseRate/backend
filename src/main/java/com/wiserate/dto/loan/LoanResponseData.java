@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -19,15 +20,16 @@ public class LoanResponseData {
     private BigDecimal cashToClose;
     private BigDecimal totalInterest;
     private BigDecimal totalPayment;
-
     private CalculatedAmounts calculatedAmounts;
+    private LocalDate startDate;
+    private LocalDate endDate;
 
-    public LoanResponseData(Loan loan) {
-        this.id = loan.getId();
-        this.periodicPayment = loan.getPeriodicPayment();
-        this.cashToClose = loan.getCashToClose();
-        this.totalInterest = loan.getTotalInterest();
-        this.totalPayment = loan.getTotalPayment();
-        this.calculatedAmounts = loan.getCalculatedAmounts();
-    }
+//    public LoanResponseData(Loan loan) {
+//        this.id = loan.getId();
+//        this.periodicPayment = loan.getPeriodicPayment();
+//        this.cashToClose = loan.getCashToClose();
+//        this.totalInterest = loan.getTotalInterest();
+//        this.totalPayment = loan.getTotalPayment();
+//        this.calculatedAmounts = loan.getCalculatedAmounts();
+//    }
 }

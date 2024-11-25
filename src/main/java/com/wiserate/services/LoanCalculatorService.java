@@ -15,21 +15,22 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Service
 public class LoanCalculatorService {
 
-    private static final Logger log = LoggerFactory.getLogger(LoanCalculatorService.class);
+    private final Logger log = LoggerFactory.getLogger(LoanCalculatorService.class);
     private final LandTransferTax landTransferTax;
+
 
     public LoanCalculatorService(LandTransferTax landTransferTax) {
         this.landTransferTax = landTransferTax;
     }
 
+
     // initialize all data into the Loan object
     public Loan initialize(Loan loan) {
+        log.debug("INITIALIZED THE LOAN CALCULATOR SERVICE....");
 
         if (loan.getFees() == null) loan.setFees(new Fees());
         if (loan.getCalculatedAmounts() == null) loan.setCalculatedAmounts(new CalculatedAmounts());
@@ -78,7 +79,6 @@ public class LoanCalculatorService {
         // MUNICIPAL LAND TRANSFER TAX [ONLY TORONTO]
         BigDecimal municipalLandTransferTax = BigDecimal.ZERO;
         if (loan.getMunicipality().equalsIgnoreCase("toronto")) {
-            System.out.println("Toronto");
             municipalLandTransferTax = landTransferTax.calculate(propertyValue, "ON");
         }
         calculatedAmounts.setMunicipalLandTransferTax(municipalLandTransferTax);
@@ -116,8 +116,6 @@ public class LoanCalculatorService {
                 .round(MathContext.DECIMAL64);
         ;
 
-//        System.out.println("Cash to Close: \n-Down Payment\n-Land Transfer Tax\n-PST\n-Lawyer Fee\n-Title Insurance\n-Home Inspection Fee\n-Appraisal Fee\n-Other Fees\n");
-
         loan.setCashToClose(cashToClose);
 
         loan.setFees(fees);
@@ -135,13 +133,16 @@ public class LoanCalculatorService {
         LocalDate endDate = calculateEndDate(loan.getStartDate(), loan.getLoanTermMonths() / 12);
         loan.setEndDate(endDate);
 
+        log.debug("LOAN CALCULATION COMPLETED....");
 
         // RETURN LOAN
         return loan;
     }
 
+
     // function that convert PaymentFrequency to frequencyFactor
     private int calculatePaymentsPerYear(PaymentFrequency frequency) {
+        log.debug("Calculating payments per year for frequency: {}", frequency);
         return switch (frequency) {
             case DAILY -> 365;
             case WEEKLY -> 52;
@@ -153,6 +154,7 @@ public class LoanCalculatorService {
             default -> 0;
         };
     }
+
 
     // Calculating equal periodic payment for compound interest when compounding frequency is different from payment frequency and principal is given
     /*
@@ -173,12 +175,12 @@ public class LoanCalculatorService {
             int compoundingFrequency,
             BigDecimal termInYears,
             int paymentsPerYear) {
-
-         log.debug("Principal: {}", principal);
-         log.debug("Annual Rate: {}", annualRate);
-         log.debug("Compounding Frequency: {}", compoundingFrequency);
-         log.debug("Term in Years: {}", termInYears);
-         log.debug("Payments per Year: {}", paymentsPerYear);
+        log.debug("CALCULATING PERIODIC PAYMENT FOR COMPOUND INTEREST....");
+//        log.debug("Principal: {}", principal);
+//        log.debug("Annual Rate: {}", annualRate);
+//        log.debug("Compounding Frequency: {}", compoundingFrequency);
+//        log.debug("Term in Years: {}", termInYears);
+//        log.debug("Payments per Year: {}", paymentsPerYear);
 
         // Validate inputs
         if (principal.compareTo(BigDecimal.ZERO) <= 0 ||
@@ -213,8 +215,8 @@ public class LoanCalculatorService {
             BigDecimal denominator = one.subtract(
                     one.add(effectiveRate).pow(-totalPayments, MathContext.DECIMAL64));
 
-            log.debug("Numerator: {}", numerator);
-            log.debug("Denominator: {}", denominator);
+//            log.debug("Numerator: {}", numerator);
+//            log.debug("Denominator: {}", denominator);
 
             if (denominator.compareTo(BigDecimal.ZERO) == 0) {
                 log.error("Error in calculating periodic payment: Division by zero");
@@ -230,8 +232,11 @@ public class LoanCalculatorService {
         }
     }
 
+
     // Calculate equal amount of payment for full term of loan
     public BigDecimal calculatePeriodicPayment(Loan loan) {
+        log.debug("INITIALIZING PERIODIC PAYMENT CALCULATION....");
+
         BigDecimal principal = loan.getPrincipal();
         BigDecimal annualRate = loan.getAnnualInterestRate();
 
@@ -266,17 +271,21 @@ public class LoanCalculatorService {
             // periodicPayment = Math.round(totalAmount / totalPayments * 100.0) / 100.0;
             periodicPayment = totalAmount.divide(BigDecimal.valueOf(totalPayments), 2, RoundingMode.HALF_UP);
         }
+
+        log.debug("PERIODIC PAYMENT CALCULATED: {}", periodicPayment);
         return periodicPayment;
     }
 
 
     // REBATE
     private BigDecimal getMaxTaxRebate(String province) {
+        log.debug("GETTING MAXIMUM TAX REBATE FOR PROVINCE: {}", province);
         return getMaxTaxRebate(province, "");
     }
 
     // REBATE OVERLOADED
     public BigDecimal getMaxTaxRebate(String province, String municipality) {
+        log.debug("GETTING MAXIMUM TAX REBATE FOR PROVINCE: {} AND MUNICIPALITY: {}", province, municipality);
         return switch (province) {
             case "BC" -> BigDecimal.valueOf(8000.0);
             case "ON" -> {
@@ -296,6 +305,7 @@ public class LoanCalculatorService {
 
     // CMHC Insurance
     public BigDecimal calculatePremium(BigDecimal totalLoanAmount, BigDecimal downPaymentPercentage) {
+        log.debug("CALCULATING CMHC INSURANCE PREMIUM....");
 
         // Validate input
         if (downPaymentPercentage.compareTo(BigDecimal.ZERO) < 0 || downPaymentPercentage.compareTo(BigDecimal.valueOf(100)) > 0) {
@@ -324,6 +334,7 @@ public class LoanCalculatorService {
 
     // PST
     public BigDecimal calculatePST(BigDecimal cmhcAmount, String province) {
+        log.debug("CALCULATING PROVINCIAL SALES TAX....");
         double rate = switch (province.toUpperCase()) {
             case "MB" -> 0.07;
             case "ON" -> 0.08;
@@ -335,34 +346,17 @@ public class LoanCalculatorService {
         return cmhcAmount.multiply(BigDecimal.valueOf(rate));
     }
 
-    // Calculate loan term (in years) based on principal, interest rate, and monthly payment
-    public double calculateLoanTerm(double principal, double annualInterestRate, double monthlyPayment) {
-        double monthlyRate = (annualInterestRate / 100) / 12; // Convert annual rate to monthly
-
-        // Formula for loan term: n = log(Payment / (Payment - Principal × rate)) / log(1 + rate)
-        return Math.log(monthlyPayment / (monthlyPayment - principal * monthlyRate))
-                / Math.log(1 + monthlyRate) / 12;
-    }
-
-    // Calculate total interest paid over the loan term
-    public double calculateTotalInterest(double principal, double monthlyPayment, int loanTermYears) {
-        double totalPayments = loanTermYears * 12;
-        return (monthlyPayment * totalPayments) - principal; // Total paid - Principal
-    }
-
-    // Calculate total payment (Principal + Total Interest)
-    public double calculateTotalPayment(double monthlyPayment, int loanTermYears) {
-        int totalPayments = loanTermYears * 12;
-        return monthlyPayment * totalPayments;
-    }
 
     // Calculate end date based on start date and loan term
     public LocalDate calculateEndDate(@NotNull LocalDate startDate, int loanTermYears) {
+        log.debug("CALCULATING END DATE....");
         return startDate.plusYears(loanTermYears);
     }
 
+
     // Calculate down payment percentage (optional utility)
     public BigDecimal calculateDownPaymentPercentage(BigDecimal downPayment, BigDecimal totalLoanAmount) {
+        log.debug("CALCULATING DOWN PAYMENT PERCENTAGE....");
         return downPayment.divide(totalLoanAmount, 2, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
     }
 
