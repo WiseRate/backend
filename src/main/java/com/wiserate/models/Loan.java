@@ -8,23 +8,25 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.PositiveOrZero;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@DynamicUpdate
+@ToString
 public class Loan {
 
     @Id
@@ -91,7 +93,7 @@ public class Loan {
     @Embedded
     private CalculatedAmounts calculatedAmounts;
 
-//    @Transient    // USED WHEN NOT TO SAVE IN DB BUT WE ARE SAVING IT
+    //    @Transient    // USED WHEN NOT TO SAVE IN DB BUT WE ARE SAVING IT
     private BigDecimal periodicPayment;
     private BigDecimal totalInterest;
 
@@ -107,8 +109,15 @@ public class Loan {
 
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="fk_user_id", nullable = false)
+    @JoinColumn(name = "fk_user_id", nullable = false)
     private MUser user;
+
+    // CascadeType.ALL ensure that when we save a loan, it will save all the amortization payments as well.
+    // orphanRemoval = true ensures that when we remove a loan, it will remove all the amortization payments as well.
+    @OneToMany(mappedBy = "loan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AmortizationPayment> amortizationSchedule = new ArrayList<>();
+
+
 }
 
 
@@ -119,3 +128,37 @@ public class Loan {
 // Cascade not needed here as we are not saving User object from Loan object
 // FetchType.LAZY is used to load the user object only when it is needed
 //      else .Eager is used to load the full user object every time
+
+/*
+
+@Override
+    public String toString() {
+        return "Loan{" +
+                "id=" + id +
+                ", loanType=" + loanType +
+                ", province=" + province +
+                ", municipality='" + municipality + '\'' +
+                ", totalLoanAmount=" + totalLoanAmount +
+                ", downPayment=" + downPayment +
+                ", principal=" + principal +
+                ", interestType=" + interestType +
+                ", isCompoundInterest=" + isCompoundInterest +
+                ", compoundFrequency=" + compoundFrequency +
+                ", annualInterestRate=" + annualInterestRate +
+                ", loanTermMonths=" + loanTermMonths +
+                ", paymentFrequency=" + paymentFrequency +
+                ", newHomeBuyer=" + newHomeBuyer +
+                ", startDate=" + startDate +
+                ", endDate=" + endDate +
+                ", fees=" + fees +
+                ", calculatedAmounts=" + calculatedAmounts +
+                ", periodicPayment=" + periodicPayment +
+                ", totalInterest=" + totalInterest +
+                ", cashToClose=" + cashToClose +
+                ", totalPayment=" + totalPayment +
+                ", isActive=" + isActive +
+                ", lastUpdated=" + lastUpdated +
+                ", user=" + user +
+                '}';
+    }
+ */

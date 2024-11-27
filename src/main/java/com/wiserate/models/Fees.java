@@ -17,4 +17,17 @@ public class Fees {
     private BigDecimal otherFees = BigDecimal.ZERO;
     private BigDecimal titleInsurance = BigDecimal.ZERO;
     private BigDecimal propertyTax = BigDecimal.ZERO;
+
+    @Override
+    public String toString() {
+        return "Fees: {" +
+                "insurancePremium=" + insurancePremium +
+                ", lawyerFee=" + lawyerFee +
+                ", appraisalFee=" + appraisalFee +
+                ", homeInspectionFee=" + homeInspectionFee +
+                ", otherFees=" + otherFees +
+                ", titleInsurance=" + titleInsurance +
+                ", propertyTax=" + propertyTax +
+                '}';
+    }
 }

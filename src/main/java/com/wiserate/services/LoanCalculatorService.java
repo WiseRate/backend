@@ -3,10 +3,12 @@ package com.wiserate.services;
 import com.wiserate.enums.PaymentFrequency;
 import com.wiserate.enums.ProvinceCA;
 import com.wiserate.helpers.LandTransferTax;
+import com.wiserate.models.AmortizationPayment;
 import com.wiserate.models.CalculatedAmounts;
 import com.wiserate.models.Fees;
 import com.wiserate.models.Loan;
 import jakarta.validation.constraints.NotNull;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,11 +17,17 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
+@Slf4j
 @Service
 public class LoanCalculatorService {
 
-    private final Logger log = LoggerFactory.getLogger(LoanCalculatorService.class);
+    // Using Lombok @Slf4j annotation is equivalent to the following and
+    // is preferred as it generates the logger at compile time:
+    // private static final Logger log = LoggerFactory.getLogger(LoanCalculatorService.class);
+
     private final LandTransferTax landTransferTax;
 
 
@@ -134,6 +142,11 @@ public class LoanCalculatorService {
         loan.setEndDate(endDate);
 
         log.debug("LOAN CALCULATION COMPLETED....");
+
+        List<AmortizationPayment> payment = generateAmortizationSchedule(loan);
+        log.debug("Amortization Schedule: {}", payment);
+        loan.setAmortizationSchedule(payment);
+
 
         // RETURN LOAN
         return loan;
@@ -307,8 +320,13 @@ public class LoanCalculatorService {
     public BigDecimal calculatePremium(BigDecimal totalLoanAmount, BigDecimal downPaymentPercentage) {
         log.debug("CALCULATING CMHC INSURANCE PREMIUM....");
 
+        log.debug("Down Payment Percentage: {}", downPaymentPercentage);
         // Validate input
-        if (downPaymentPercentage.compareTo(BigDecimal.ZERO) < 0 || downPaymentPercentage.compareTo(BigDecimal.valueOf(100)) > 0) {
+        // compareTo have 3 possible return values: -1, 0, 1
+        // 1    - if the BigDecimal is greater than the argument
+        // 0    - if the BigDecimal is equal to the argument
+        // -1   - if the BigDecimal is less than the argument
+        if (downPaymentPercentage.compareTo(BigDecimal.ZERO) < 1 || downPaymentPercentage.compareTo(BigDecimal.valueOf(99)) > 0) {
             throw new IllegalArgumentException("Down payment percentage must be between 0 and 100.");
         }
 
@@ -357,8 +375,88 @@ public class LoanCalculatorService {
     // Calculate down payment percentage (optional utility)
     public BigDecimal calculateDownPaymentPercentage(BigDecimal downPayment, BigDecimal totalLoanAmount) {
         log.debug("CALCULATING DOWN PAYMENT PERCENTAGE....");
+        log.debug("Down Payment: {}", downPayment);
         return downPayment.divide(totalLoanAmount, 2, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
     }
+
+
+    // Generate Amortization Schedule
+    public List<AmortizationPayment> generateAmortizationSchedule(Loan loan) {
+        List<AmortizationPayment> schedule = new ArrayList<>();
+
+        // Extract necessary data from the loan
+        BigDecimal remainingBalance = loan.getPrincipal();
+        BigDecimal periodicPayment = loan.getPeriodicPayment();
+        int paymentsPerYear = calculatePaymentsPerYear(loan.getPaymentFrequency());
+        BigDecimal periodicInterestRate = loan.getAnnualInterestRate()
+                .divide(BigDecimal.valueOf(paymentsPerYear), MathContext.DECIMAL64);
+        int totalPayments = loan.getLoanTermMonths();
+
+        LocalDate startDate = loan.getStartDate();
+        int startYear = startDate.getYear();
+
+        BigDecimal yearlyTotalPaid = BigDecimal.ZERO;
+        BigDecimal yearlyPrincipalPaid = BigDecimal.ZERO;
+        BigDecimal yearlyInterestPaid = BigDecimal.ZERO;
+
+        // Initial State when nothing is paid
+        schedule.add(AmortizationPayment.builder()
+                .year(startYear)
+                .totalPaid(0.0)
+                .principalPaid(0.0)
+                .interestPaid(0.0)
+                .remainingBalance(remainingBalance.doubleValue())
+                .loan(loan)
+                .build());
+
+        // Iterate over the loan term
+        for (int period = 0; period <= totalPayments; period++) {
+            BigDecimal interestPaid = remainingBalance.multiply(periodicInterestRate).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal principalPaid = periodicPayment.subtract(interestPaid).setScale(2, RoundingMode.HALF_UP);
+
+            // Adjust remaining balance
+            if (remainingBalance.compareTo(principalPaid) < 0) {
+                // Final payment case: Adjust to pay off the remaining balance
+                principalPaid = remainingBalance;
+                periodicPayment = principalPaid.add(interestPaid);
+                remainingBalance = BigDecimal.ZERO;
+            } else {
+                remainingBalance = remainingBalance.subtract(principalPaid).setScale(2, RoundingMode.HALF_UP);
+            }
+
+            // Accumulate yearly totals
+            yearlyInterestPaid = yearlyInterestPaid.add(interestPaid);
+            yearlyPrincipalPaid = yearlyPrincipalPaid.add(principalPaid);
+            yearlyTotalPaid = yearlyTotalPaid.add(periodicPayment);
+
+            // Add yearly entry at the end of each year or when loan is fully paid
+            if (period % paymentsPerYear == 0 || remainingBalance.compareTo(BigDecimal.ZERO) <= 0) {
+                int year = startYear + (period - 1) / paymentsPerYear;
+
+                schedule.add(AmortizationPayment.builder()
+                        .year(year)
+                        .totalPaid(yearlyTotalPaid.doubleValue())
+                        .principalPaid(yearlyPrincipalPaid.doubleValue())
+                        .interestPaid(yearlyInterestPaid.doubleValue())
+                        .remainingBalance(remainingBalance.doubleValue())
+                        .loan(loan)
+                        .build());
+
+                // Reset yearly totals
+                yearlyInterestPaid = BigDecimal.ZERO;
+                yearlyPrincipalPaid = BigDecimal.ZERO;
+                yearlyTotalPaid = BigDecimal.ZERO;
+
+                // Break if balance is fully paid
+                if (remainingBalance.compareTo(BigDecimal.ZERO) <= 0) {
+                    break;
+                }
+            }
+        }
+
+        return schedule;
+    }
+
 
 
 }

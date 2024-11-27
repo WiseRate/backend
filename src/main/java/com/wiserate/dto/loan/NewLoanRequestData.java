@@ -22,12 +22,15 @@ public class NewLoanRequestData {
     private LoanTypes loanType;
 
     @NotBlank
+    @NotNull
     private String municipality;
 
     @Positive
+    @NotNull
     private BigDecimal totalLoanAmount;
 
     @PositiveOrZero
+    @NotNull
     private BigDecimal downPayment;
 
     @NotNull
@@ -40,9 +43,11 @@ public class NewLoanRequestData {
     private Integer compoundFrequency = 2;
 
     @Positive
+    @NotNull
     private BigDecimal annualInterestRate;
 
     @Min(1)
+    @NotNull
     private Integer loanTermMonths;
 
     @NotNull
@@ -55,4 +60,24 @@ public class NewLoanRequestData {
     private Fees fees;
 
     private Boolean isActive;
+
+    @Override
+    public String toString() {
+        return "NewLoanRequestData{" +
+                "province=" + province +
+                ", loanType=" + loanType +
+                ", municipality='" + municipality + '\'' +
+                ", totalLoanAmount=" + totalLoanAmount +
+                ", downPayment=" + downPayment +
+                ", interestType=" + interestType +
+                ", isCompoundInterest=" + isCompoundInterest +
+                ", compoundFrequency=" + compoundFrequency +
+                ", annualInterestRate=" + annualInterestRate +
+                ", loanTermMonths=" + loanTermMonths +
+                ", paymentFrequency=" + paymentFrequency +
+                ", newHomeBuyer=" + newHomeBuyer +
+                ", fees=" + fees +
+                ", isActive=" + isActive +
+                '}';
+    }
 }

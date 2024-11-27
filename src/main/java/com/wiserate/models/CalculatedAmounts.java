@@ -15,5 +15,16 @@ public class CalculatedAmounts {
     private BigDecimal landTransferTaxRebate = BigDecimal.ZERO;
     private BigDecimal provincialSalesTax = BigDecimal.ZERO;
     private BigDecimal cmhcInsurance = BigDecimal.ZERO;
+
+    @Override
+    public String toString() {
+        return "CalculatedAmounts: {" +
+                "municipalLandTransferTax=" + municipalLandTransferTax +
+                ", provincialLandTransferTax=" + provincialLandTransferTax +
+                ", landTransferTaxRebate=" + landTransferTaxRebate +
+                ", provincialSalesTax=" + provincialSalesTax +
+                ", cmhcInsurance=" + cmhcInsurance +
+                '}';
+    }
 }
 

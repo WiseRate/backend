@@ -1,5 +1,6 @@
 package com.wiserate.dto.loan;
 
+import com.wiserate.models.AmortizationPayment;
 import com.wiserate.models.CalculatedAmounts;
 import com.wiserate.models.Loan;
 import lombok.AllArgsConstructor;
@@ -23,8 +24,23 @@ public class LoanResponseData {
     private CalculatedAmounts calculatedAmounts;
     private LocalDate startDate;
     private LocalDate endDate;
+    private AmortizationPayment amortizationPayment;
 
-//    public LoanResponseData(Loan loan) {
+    @Override
+    public String toString() {
+        return "LoanResponseData{" +
+                "id=" + id +
+                ", periodicPayment=" + periodicPayment +
+                ", cashToClose=" + cashToClose +
+                ", totalInterest=" + totalInterest +
+                ", totalPayment=" + totalPayment +
+                ", calculatedAmounts=" + calculatedAmounts +
+                ", startDate=" + startDate +
+                ", endDate=" + endDate +
+                '}';
+    }
+
+    //    public LoanResponseData(Loan loan) {
 //        this.id = loan.getId();
 //        this.periodicPayment = loan.getPeriodicPayment();
 //        this.cashToClose = loan.getCashToClose();

@@ -2,6 +2,7 @@ package com.wiserate.repository;
 
 import com.wiserate.models.MUser;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -10,5 +11,8 @@ import java.util.Optional;
 public interface MUserRepository extends JpaRepository<MUser, Long> {
 
     public Optional<MUser> findByUsername(String username);
+
+    @Query("SELECT m FROM MUser m WHERE m.id = :id")
+    MUser findByIdWithUpdatedFields(Long id);
 
 }

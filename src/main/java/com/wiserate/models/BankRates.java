@@ -34,4 +34,16 @@ public class BankRates {
     @UpdateTimestamp                    // Automatically updates the lastUpdated field with the current timestamp
     private LocalDateTime lastUpdated;
 
+    @Override
+    public String toString() {
+        return "BankRates{" +
+                "id=" + id +
+                ", provider='" + provider + '\'' +
+                ", threeYearFixed=" + threeYearFixed +
+                ", fiveYearFixed=" + fiveYearFixed +
+                ", tenYearFixed=" + tenYearFixed +
+                ", fiveYearVariable=" + fiveYearVariable +
+                ", lastUpdated=" + lastUpdated +
+                '}';
+    }
 }
