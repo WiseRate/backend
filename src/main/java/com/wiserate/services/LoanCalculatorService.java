@@ -218,18 +218,11 @@ public class LoanCalculatorService {
                             Math.pow(one.add(ratePerCompoundingPeriod).doubleValue(), fractionalPower))
                     .subtract(one);
 
-            log.debug("Effective Rate: {}", effectiveRate);
-
             // Total number of payments
             int totalPayments = termInYears.multiply(paymentsPerYearBD).intValue();
-
             BigDecimal numerator = principal.multiply(effectiveRate);
-
             BigDecimal denominator = one.subtract(
                     one.add(effectiveRate).pow(-totalPayments, MathContext.DECIMAL64));
-
-//            log.debug("Numerator: {}", numerator);
-//            log.debug("Denominator: {}", denominator);
 
             if (denominator.compareTo(BigDecimal.ZERO) == 0) {
                 log.error("Error in calculating periodic payment: Division by zero");
@@ -395,9 +388,11 @@ public class LoanCalculatorService {
         LocalDate startDate = loan.getStartDate();
         int startYear = startDate.getYear();
 
-        BigDecimal yearlyTotalPaid = BigDecimal.ZERO;
+        BigDecimal TotalPaid = BigDecimal.ZERO;
         BigDecimal yearlyPrincipalPaid = BigDecimal.ZERO;
         BigDecimal yearlyInterestPaid = BigDecimal.ZERO;
+
+        BigDecimal tolerance = BigDecimal.valueOf(0.01);
 
         // Initial State when nothing is paid
         schedule.add(AmortizationPayment.builder()
@@ -410,12 +405,12 @@ public class LoanCalculatorService {
                 .build());
 
         // Iterate over the loan term
-        for (int period = 0; period <= totalPayments; period++) {
+        for (int period = 1; period <= totalPayments; period++) {
             BigDecimal interestPaid = remainingBalance.multiply(periodicInterestRate).setScale(2, RoundingMode.HALF_UP);
             BigDecimal principalPaid = periodicPayment.subtract(interestPaid).setScale(2, RoundingMode.HALF_UP);
 
             // Adjust remaining balance
-            if (remainingBalance.compareTo(principalPaid) < 0) {
+            if (remainingBalance.compareTo(principalPaid) <= 0) {
                 // Final payment case: Adjust to pay off the remaining balance
                 principalPaid = remainingBalance;
                 periodicPayment = principalPaid.add(interestPaid);
@@ -427,15 +422,20 @@ public class LoanCalculatorService {
             // Accumulate yearly totals
             yearlyInterestPaid = yearlyInterestPaid.add(interestPaid);
             yearlyPrincipalPaid = yearlyPrincipalPaid.add(principalPaid);
-            yearlyTotalPaid = yearlyTotalPaid.add(periodicPayment);
+            TotalPaid = TotalPaid.add(periodicPayment);
+
 
             // Add yearly entry at the end of each year or when loan is fully paid
-            if (period % paymentsPerYear == 0 || remainingBalance.compareTo(BigDecimal.ZERO) <= 0) {
-                int year = startYear + (period - 1) / paymentsPerYear;
+            if (period % paymentsPerYear == 0 || remainingBalance.compareTo(tolerance) <= 0) {
+                int year = startYear + period / paymentsPerYear;
+
+                log.debug("Period: {}, Current Year: {}, Total Paid: {}, Total Interest: {}, Total Principal: {}, Remaining Balance: {}",
+                        period, year, TotalPaid, yearlyInterestPaid, yearlyPrincipalPaid, remainingBalance);
+
 
                 schedule.add(AmortizationPayment.builder()
                         .year(year)
-                        .totalPaid(yearlyTotalPaid.doubleValue())
+                        .totalPaid(TotalPaid.doubleValue())
                         .principalPaid(yearlyPrincipalPaid.doubleValue())
                         .interestPaid(yearlyInterestPaid.doubleValue())
                         .remainingBalance(remainingBalance.doubleValue())
@@ -445,15 +445,13 @@ public class LoanCalculatorService {
                 // Reset yearly totals
                 yearlyInterestPaid = BigDecimal.ZERO;
                 yearlyPrincipalPaid = BigDecimal.ZERO;
-                yearlyTotalPaid = BigDecimal.ZERO;
 
                 // Break if balance is fully paid
-                if (remainingBalance.compareTo(BigDecimal.ZERO) <= 0) {
+                if (remainingBalance.compareTo(tolerance) <= 0) {
                     break;
                 }
             }
         }
-
         return schedule;
     }
 

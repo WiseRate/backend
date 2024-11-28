@@ -30,7 +30,7 @@ public class SecurityConfig  {
                     requests
 //                            .requestMatchers("/h2-console/**").permitAll()
                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
-                            .requestMatchers("/user/create", "/api/v1/loan", "/h2-console/**").permitAll()
+                            .requestMatchers("/user/create", "/api/v1/loan", "/h2-console/**", "/api/v1/bank-rates").permitAll()
                             .anyRequest().authenticated();
         });
 

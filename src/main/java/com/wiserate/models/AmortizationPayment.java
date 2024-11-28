@@ -8,7 +8,7 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Entity
+@Entity(name = "amortization_payment")
 @Builder
 @ToString
 public class AmortizationPayment {

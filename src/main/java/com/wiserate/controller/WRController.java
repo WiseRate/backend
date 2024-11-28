@@ -5,6 +5,7 @@ import com.wiserate.dto.loan.LoanResponseData;
 import com.wiserate.dto.loan.NewLoanRequestData;
 import com.wiserate.dto.mUser.UserDTO;
 import com.wiserate.models.Loan;
+import com.wiserate.services.BankRatesService;
 import com.wiserate.services.LoanService;
 import com.wiserate.services.MUserService;
 import jakarta.validation.Valid;
@@ -21,15 +22,19 @@ public class WRController {
     // private final Logger log = LoggerFactory.getLogger(WRController.class);
     private final LoanService loanService;
     private final MUserService mUserService;
+    private final BankRatesService bankRatesService;
 
 
     public WRController(
             LoanService loanService,
-            MUserService mUserService
+            MUserService mUserService, BankRatesService bankRatesService
     ) {
         this.loanService = loanService;
         this.mUserService = mUserService;
+        this.bankRatesService = bankRatesService;
     }
+
+    // @GetMapping("/")
 
     @GetMapping("/demo")
     public ResponseEntity<Loan> demo() {
@@ -64,6 +69,17 @@ public class WRController {
         } catch (Exception e) {
             log.error("FAILED TO CREATE LOAN....");
             return ResponseEntity.badRequest().body("Failed to create loan");
+        }
+    }
+
+    @GetMapping("/bank-rates")
+    public ResponseEntity<?> getBankRates() {
+        try {
+            log.debug("GETTING BANK RATES....");
+            return ResponseEntity.ok(bankRatesService.getBankRates());
+        } catch (Exception e) {
+            log.error("FAILED TO GET BANK RATES....");
+            return ResponseEntity.badRequest().body("Failed to get bank rates");
         }
     }
 }
