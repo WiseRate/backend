@@ -3,6 +3,7 @@ package com.wiserate.services;
 import com.wiserate.enums.PaymentFrequency;
 import com.wiserate.enums.ProvinceCA;
 import com.wiserate.helpers.LandTransferTax;
+import com.wiserate.helpers.LoanHelpers;
 import com.wiserate.models.AmortizationPayment;
 import com.wiserate.models.CalculatedAmounts;
 import com.wiserate.models.Fees;
@@ -19,6 +20,8 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
 @Slf4j
 @Service
@@ -29,10 +32,12 @@ public class LoanCalculatorService {
     // private static final Logger log = LoggerFactory.getLogger(LoanCalculatorService.class);
 
     private final LandTransferTax landTransferTax;
+    private final LoanHelpers loanHelpers;
 
 
-    public LoanCalculatorService(LandTransferTax landTransferTax) {
+    public LoanCalculatorService(LandTransferTax landTransferTax, LoanHelpers loanHelpers) {
         this.landTransferTax = landTransferTax;
+        this.loanHelpers = loanHelpers;
     }
 
 
@@ -48,6 +53,9 @@ public class LoanCalculatorService {
 
         // PROPERTY REAL VALUE
         BigDecimal propertyValue = loan.getTotalLoanAmount();
+
+        // Principal
+        BigDecimal downPayment = loan.getDownPayment();
 
         // CMHC INSURANCE
         BigDecimal cmhcInsurance = calculatePremium(propertyValue, calculateDownPaymentPercentage(loan.getDownPayment(), propertyValue));
@@ -104,6 +112,12 @@ public class LoanCalculatorService {
             maxTaxRebate = getMaxTaxRebate(loan.getProvince().toString());
         }
 
+        BigDecimal totalTaxes = provincialLandTransferTax.add(municipalLandTransferTax);
+        // Rebate cannot exceed total taxes
+        if (maxTaxRebate.compareTo(totalTaxes) > 0) {
+            maxTaxRebate = totalTaxes;
+        }
+
         calculatedAmounts.setLandTransferTaxRebate(maxTaxRebate);
 
         // PROVINCIAL SALES TAX [ PST ]
@@ -144,7 +158,7 @@ public class LoanCalculatorService {
         log.debug("LOAN CALCULATION COMPLETED....");
 
         List<AmortizationPayment> payment = generateAmortizationSchedule(loan);
-        log.debug("Amortization Schedule: {}", payment);
+        // log.debug("Amortization Schedule: {}", payment);
         loan.setAmortizationSchedule(payment);
 
 
@@ -153,35 +167,6 @@ public class LoanCalculatorService {
     }
 
 
-    // function that convert PaymentFrequency to frequencyFactor
-    private int calculatePaymentsPerYear(PaymentFrequency frequency) {
-        log.debug("Calculating payments per year for frequency: {}", frequency);
-        return switch (frequency) {
-            case DAILY -> 365;
-            case WEEKLY -> 52;
-            case BIWEEKLY -> 26;
-            case MONTHLY -> 12;
-            case QUARTERLY -> 4;
-            case SEMIANNUALLY -> 2;
-            case ANNUALLY -> 1;
-            default -> 0;
-        };
-    }
-
-
-    // Calculating equal periodic payment for compound interest when compounding frequency is different from payment frequency and principal is given
-    /*
-        public BigDecimal calculatePeriodicPaymentCompoundInterest(BigDecimal principal, BigDecimal annualRate, int compoundingFrequency, BigDecimal termInYears, int paymentsPerYear) {
-            if (principal <= 0 || annualRate <= 0 || compoundingFrequency <= 0 || termInYears <= 0 || paymentsPerYear <= 0) {
-                System.out.println("Principal: " + principal + "\tAnnual Rate: " + annualRate + "\tCompounding Frequency: " + compoundingFrequency + "\tTerm in Years: " + termInYears + "\tPayments per Year: " + paymentsPerYear);
-                return 0;
-            }
-            double effectiveRate = Math.pow(1 + annualRate / compoundingFrequency, (double) compoundingFrequency / paymentsPerYear) - 1;
-            int totalPayments = (int) (termInYears * paymentsPerYear);
-            double equalPayments = Math.round((principal * effectiveRate) / (1 - Math.pow(1 + effectiveRate, -totalPayments)) * 100.0) / 100.0;
-            return equalPayments;
-    }
-    */
     public BigDecimal calculatePeriodicPaymentCompoundInterest(
             BigDecimal principal,
             BigDecimal annualRate,
@@ -189,11 +174,8 @@ public class LoanCalculatorService {
             BigDecimal termInYears,
             int paymentsPerYear) {
         log.debug("CALCULATING PERIODIC PAYMENT FOR COMPOUND INTEREST....");
-//        log.debug("Principal: {}", principal);
-//        log.debug("Annual Rate: {}", annualRate);
-//        log.debug("Compounding Frequency: {}", compoundingFrequency);
-//        log.debug("Term in Years: {}", termInYears);
-//        log.debug("Payments per Year: {}", paymentsPerYear);
+        log.debug("Principal: {}\tAnnual Rate: {}\tCompounding Frequency: {}\tTerm in Years: {}\tPayments per Year: {}",
+                principal, annualRate, compoundingFrequency, termInYears, paymentsPerYear);
 
         // Validate inputs
         if (principal.compareTo(BigDecimal.ZERO) <= 0 ||
@@ -210,26 +192,16 @@ public class LoanCalculatorService {
         BigDecimal compoundingFrequencyBD = BigDecimal.valueOf(compoundingFrequency);
         BigDecimal paymentsPerYearBD = BigDecimal.valueOf(paymentsPerYear);
 
+
         try {
-            BigDecimal ratePerCompoundingPeriod = annualRate.divide(compoundingFrequencyBD, MathContext.DECIMAL64);
-            BigDecimal power = compoundingFrequencyBD.divide(paymentsPerYearBD, MathContext.DECIMAL64);
-            double fractionalPower = power.doubleValue();
-            BigDecimal effectiveRate = BigDecimal.valueOf(
-                            Math.pow(one.add(ratePerCompoundingPeriod).doubleValue(), fractionalPower))
-                    .subtract(one);
-
-            // Total number of payments
-            int totalPayments = termInYears.multiply(paymentsPerYearBD).intValue();
-            BigDecimal numerator = principal.multiply(effectiveRate);
-            BigDecimal denominator = one.subtract(
-                    one.add(effectiveRate).pow(-totalPayments, MathContext.DECIMAL64));
-
-            if (denominator.compareTo(BigDecimal.ZERO) == 0) {
-                log.error("Error in calculating periodic payment: Division by zero");
-                return BigDecimal.ZERO;
-            }
-
-            return numerator.divide(denominator, 2, RoundingMode.HALF_UP);
+            //  PMT = P * r * (1 + r)^n / (1 + r)^n - 1
+            BigDecimal r = annualRate.divide(compoundingFrequencyBD, MathContext.DECIMAL64);
+            BigDecimal n = termInYears.multiply(paymentsPerYearBD);
+            BigDecimal cf = one.add(r).pow(n.intValue(), MathContext.DECIMAL64);
+            BigDecimal numerator = principal.multiply(r).multiply(cf);
+            BigDecimal denominator = cf.subtract(one);
+            BigDecimal PMT = numerator.divide(denominator, MathContext.DECIMAL64);
+            return PMT;
 
         } catch (ArithmeticException e) {
 //            System.out.println("Error in calculating periodic payment: " + e.getMessage());
@@ -243,15 +215,18 @@ public class LoanCalculatorService {
     public BigDecimal calculatePeriodicPayment(Loan loan) {
         log.debug("INITIALIZING PERIODIC PAYMENT CALCULATION....");
 
-        BigDecimal principal = loan.getPrincipal();
-        BigDecimal annualRate = loan.getAnnualInterestRate();
+        BigDecimal principal = loan.getPrincipal();                 // a
+        BigDecimal annualRate = loan.getAnnualInterestRate();       // r
 
         int termInMonths = loan.getLoanTermMonths();
-        BigDecimal termInYears = BigDecimal.valueOf(termInMonths / 12.0);
+        BigDecimal termInYears = BigDecimal.valueOf(termInMonths / 12.0);       // t
 
         boolean isCompoundInterest = loan.getIsCompoundInterest();
 
-        int paymentsPerYear = calculatePaymentsPerYear(loan.getPaymentFrequency());
+        // YEARLY PAYMENTS [NUMBER]     n
+        int paymentsPerYear = loanHelpers.noOfPaymentsPerYear(loan.getPaymentFrequency());
+
+        log.debug("Payments per year: {}", paymentsPerYear);
 
         BigDecimal periodicPayment;
 
@@ -312,32 +287,38 @@ public class LoanCalculatorService {
     // CMHC Insurance
     public BigDecimal calculatePremium(BigDecimal totalLoanAmount, BigDecimal downPaymentPercentage) {
         log.debug("CALCULATING CMHC INSURANCE PREMIUM....");
-
-        log.debug("Down Payment Percentage: {}", downPaymentPercentage);
         // Validate input
-        // compareTo have 3 possible return values: -1, 0, 1
-        // 1    - if the BigDecimal is greater than the argument
-        // 0    - if the BigDecimal is equal to the argument
-        // -1   - if the BigDecimal is less than the argument
-        if (downPaymentPercentage.compareTo(BigDecimal.ZERO) < 1 || downPaymentPercentage.compareTo(BigDecimal.valueOf(99)) > 0) {
-            throw new IllegalArgumentException("Down payment percentage must be between 0 and 100.");
+        log.debug("VALIDATING INPUT....");
+        if (totalLoanAmount == null || totalLoanAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Total loan amount must be greater than zero.");
         }
-
-        // Determine the premium rate based on the down payment percentage
-        BigDecimal premiumRate = BigDecimal.ZERO;
-//        if (downPaymentPercentage >= 5 && downPaymentPercentage < 10) {
-        if (downPaymentPercentage.compareTo(BigDecimal.valueOf(5)) >= 0 &&
-                downPaymentPercentage.compareTo(BigDecimal.valueOf(10)) < 0) {
-            premiumRate = new BigDecimal("0.4"); // 4.00%
-        } else if (downPaymentPercentage.compareTo(BigDecimal.valueOf(10)) >= 0 &&
-                downPaymentPercentage.compareTo(BigDecimal.valueOf(15)) < 0) {
-            premiumRate = new BigDecimal("0.031"); // 3.10%
-        } else if (downPaymentPercentage.compareTo(BigDecimal.valueOf(15)) >= 0 &&
-                downPaymentPercentage.compareTo(BigDecimal.valueOf(20)) < 0) {
-            premiumRate = new BigDecimal("0.028"); // 2.80%
+        if (downPaymentPercentage == null ||
+                downPaymentPercentage.compareTo(BigDecimal.ZERO) <= 0 ||
+                downPaymentPercentage.compareTo(BigDecimal.valueOf(20)) > 0
+        ) {
+            throw new IllegalArgumentException("Down payment percentage must be between 0% and 20%.");
         }
+        log.debug("INPUT VALIDATED....");
 
+        log.debug("Loan Amount: {}", totalLoanAmount);
+        log.debug("Down Payment Percentage: {}", downPaymentPercentage);
+
+        NavigableMap<BigDecimal, BigDecimal> premiumRates = new TreeMap<>();
+        premiumRates.put(BigDecimal.valueOf(5), new BigDecimal("0.04"));
+        premiumRates.put(BigDecimal.valueOf(10), new BigDecimal("0.031"));
+        premiumRates.put(BigDecimal.valueOf(15), new BigDecimal("0.028"));
+
+        // ****  PREMIUM RATE  *****
+        // floorEntry method of TreeMap:
+        // FIRST get List of KEYs that are less than and equal >= SEARCHED KEY
+        // Then returns the key with the highest value
+        BigDecimal premiumRate = premiumRates.floorEntry(downPaymentPercentage).getValue();
+        log.debug("Premium Rate: {}", premiumRate);
+
+        // ****  PREMIUM  *****
         BigDecimal premium = totalLoanAmount.multiply(premiumRate);
+        log.debug("Premium: {}", premium);
+
         premium = premium.setScale(2, RoundingMode.HALF_UP);
         return premium;
     }
@@ -380,7 +361,7 @@ public class LoanCalculatorService {
         // Extract necessary data from the loan
         BigDecimal remainingBalance = loan.getPrincipal();
         BigDecimal periodicPayment = loan.getPeriodicPayment();
-        int paymentsPerYear = calculatePaymentsPerYear(loan.getPaymentFrequency());
+        int paymentsPerYear = loanHelpers.noOfPaymentsPerYear(loan.getPaymentFrequency());
         BigDecimal periodicInterestRate = loan.getAnnualInterestRate()
                 .divide(BigDecimal.valueOf(paymentsPerYear), MathContext.DECIMAL64);
         int totalPayments = loan.getLoanTermMonths();
@@ -389,6 +370,8 @@ public class LoanCalculatorService {
         int startYear = startDate.getYear();
 
         BigDecimal TotalPaid = BigDecimal.ZERO;
+
+        BigDecimal yearlyTotalPaid = BigDecimal.ZERO;
         BigDecimal yearlyPrincipalPaid = BigDecimal.ZERO;
         BigDecimal yearlyInterestPaid = BigDecimal.ZERO;
 
@@ -404,14 +387,18 @@ public class LoanCalculatorService {
                 .loan(loan)
                 .build());
 
+        log.debug("Period: 0, Current Year: {}, Total Paid: {}, Total Interest: {}, Total Principal: {}, Remaining Balance: {}",
+                startYear, TotalPaid, yearlyInterestPaid, yearlyPrincipalPaid, remainingBalance);
+
         // Iterate over the loan term
         for (int period = 1; period <= totalPayments; period++) {
+
             BigDecimal interestPaid = remainingBalance.multiply(periodicInterestRate).setScale(2, RoundingMode.HALF_UP);
             BigDecimal principalPaid = periodicPayment.subtract(interestPaid).setScale(2, RoundingMode.HALF_UP);
 
             // Adjust remaining balance
             if (remainingBalance.compareTo(principalPaid) <= 0) {
-                // Final payment case: Adjust to pay off the remaining balance
+                interestPaid = remainingBalance.multiply(periodicInterestRate).setScale(2, RoundingMode.HALF_UP);
                 principalPaid = remainingBalance;
                 periodicPayment = principalPaid.add(interestPaid);
                 remainingBalance = BigDecimal.ZERO;
@@ -422,8 +409,9 @@ public class LoanCalculatorService {
             // Accumulate yearly totals
             yearlyInterestPaid = yearlyInterestPaid.add(interestPaid);
             yearlyPrincipalPaid = yearlyPrincipalPaid.add(principalPaid);
-            TotalPaid = TotalPaid.add(periodicPayment);
+            yearlyTotalPaid = yearlyTotalPaid.add(periodicPayment);
 
+            TotalPaid = TotalPaid.add(periodicPayment);
 
             // Add yearly entry at the end of each year or when loan is fully paid
             if (period % paymentsPerYear == 0 || remainingBalance.compareTo(tolerance) <= 0) {
@@ -431,7 +419,6 @@ public class LoanCalculatorService {
 
                 log.debug("Period: {}, Current Year: {}, Total Paid: {}, Total Interest: {}, Total Principal: {}, Remaining Balance: {}",
                         period, year, TotalPaid, yearlyInterestPaid, yearlyPrincipalPaid, remainingBalance);
-
 
                 schedule.add(AmortizationPayment.builder()
                         .year(year)
@@ -445,6 +432,7 @@ public class LoanCalculatorService {
                 // Reset yearly totals
                 yearlyInterestPaid = BigDecimal.ZERO;
                 yearlyPrincipalPaid = BigDecimal.ZERO;
+                yearlyTotalPaid = BigDecimal.ZERO;
 
                 // Break if balance is fully paid
                 if (remainingBalance.compareTo(tolerance) <= 0) {
@@ -454,7 +442,6 @@ public class LoanCalculatorService {
         }
         return schedule;
     }
-
 
 
 }
