@@ -7,11 +7,14 @@ import com.wiserate.helpers.LandTransferTax;
 import com.wiserate.models.Loan;
 import com.wiserate.services.LoanCalculatorService;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@Component
 public class LoanCalculatorTest {
 
     // Create an instance of the class that contains the function
@@ -20,8 +23,10 @@ public class LoanCalculatorTest {
 
 
     public LoanCalculatorTest(LoanCalculatorService loanCalculator, LandTransferTax landTransferTax) {
+        System.out.println("HERE 1");
         this.loanCalculator = loanCalculator;
         this.landTransferTax = landTransferTax;
+        System.out.println("HERE 2");
     }
 
     @Test
@@ -29,7 +34,7 @@ public class LoanCalculatorTest {
         Loan loan = new Loan();
 
         loan.setLoanType(LoanTypes.HOME_LOAN); // Set to any valid loan type
-        loan.setProvince(ProvinceCA.ONTARIO); // Example: Ontario
+        loan.setProvince(ProvinceCA.ON); // Example: Ontario
         loan.setPrincipal(100000.0);          // Principal amount
         loan.setAnnualInterestRate(5.0);      // Annual interest rate (as percentage)
         loan.setLoanTermMonths(360);          // Loan term in months (e.g., 30 years)
@@ -50,7 +55,7 @@ public class LoanCalculatorTest {
         Loan loan = new Loan();
 
         loan.setLoanType(LoanTypes.HOME_LOAN); // Set to any valid loan type
-        loan.setProvince(ProvinceCA.ONTARIO); // Example: Ontario
+        loan.setProvince(ProvinceCA.ON); // Example: Ontario
         loan.setPrincipal(100000.0);          // Principal amount
         loan.setAnnualInterestRate(5.0);      // Annual interest rate (as percentage)
         loan.setLoanTermMonths(360);          // Loan term in months (e.g., 30 years)
@@ -60,7 +65,8 @@ public class LoanCalculatorTest {
         loan.setStartDate(LocalDate.of(2021, 1, 1));        // Loan start date
 
         double expectedPayment = 536.82;
-        double actualPayment = loanCalculator.calculatePeriodicPayment(loan);
+        Loan loan1 = loanCalculator.initialize(loan);
+        double actualPayment = loan1.getPeriodicPayment();
         System.out.println("Expected payment: " + expectedPayment);
         System.out.println("Actual payment: " + actualPayment);
         assertEquals(expectedPayment, actualPayment, 0.01, "Periodic payment does not match expected value.");
@@ -131,7 +137,7 @@ public class LoanCalculatorTest {
     @Test
     void testCalculateLandTransferTax() {
         double price = 1000000; // Example property price
-        ProvinceCA province = ProvinceCA.ONTARIO; // Example province
+        ProvinceCA province = ProvinceCA.ON; // Example province
         double expectedTax = 32950; // Expected land transfer tax
 
         double actualTax = landTransferTax.ontario(price);
