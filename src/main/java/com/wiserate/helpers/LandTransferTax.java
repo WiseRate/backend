@@ -3,10 +3,13 @@ package com.wiserate.helpers;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 @Component
 public class LandTransferTax {
 
-    public double calculate(double propertyValue, String province){
+    public BigDecimal calculate(BigDecimal propertyValue, String province){
         switch (province.toUpperCase()) {
 //            case "ALBERTA":
 //                return alberta(propertyValue);
@@ -20,7 +23,7 @@ public class LandTransferTax {
 //                return newfoundlandAndLabrador(propertyValue);
 //            case "NOVA_SCOTIA":
 //                return novaScotia(propertyValue);
-            case "ONTARIO":
+            case "ON":
                 return ontario(propertyValue);
 //            case "PRINCE_EDWARD_ISLAND":
 //                return princeEdwardIsland(propertyValue);
@@ -35,32 +38,56 @@ public class LandTransferTax {
 //            case "YUKON":
 //                return yukon(propertyValue);
             default:
-                return 0;
+                return BigDecimal.ZERO;
         }
 
     }
 
-    public double ontario(double propertyValue) {
+    public BigDecimal ontario(BigDecimal propertyValue) {
         /*
+        Tax rates:
         0.5% on amounts up to and including $55,000
         1.0% on amounts exceeding $55,000, up to and including $250,000
         1.5% on amounts exceeding $250,000, up to and including $400,000
         2.0% on amounts exceeding $400,000
         2.5% on amounts exceeding $2 million
-         */
-        double tax = 0;
-        if (propertyValue <= 55000) {
-            tax = propertyValue * 0.005;
-        } else if (propertyValue <= 250000) {
-            tax = 55000 * 0.005 + (propertyValue - 55000) * 0.01;
-        } else if (propertyValue <= 400000) {
-            tax = 55000 * 0.005 + (250000 - 55000) * 0.01 + (propertyValue - 250000) * 0.015;
-        } else if (propertyValue <= 2000000) {
-            tax = 55000 * 0.005 + (250000 - 55000) * 0.01 + (400000 - 250000) * 0.015 + (propertyValue - 400000) * 0.02;
+        */
+
+        BigDecimal tax;
+        BigDecimal limit1 = BigDecimal.valueOf(55000);
+        BigDecimal limit2 = BigDecimal.valueOf(250000);
+        BigDecimal limit3 = BigDecimal.valueOf(400000);
+        BigDecimal limit4 = BigDecimal.valueOf(2000000);
+
+        BigDecimal rate1 = new BigDecimal("0.005"); // 0.5%
+        BigDecimal rate2 = new BigDecimal("0.01");  // 1.0%
+        BigDecimal rate3 = new BigDecimal("0.015"); // 1.5%
+        BigDecimal rate4 = new BigDecimal("0.02");  // 2.0%
+        BigDecimal rate5 = new BigDecimal("0.025"); // 2.5%
+
+        if (propertyValue.compareTo(limit1) <= 0) {
+            tax = propertyValue.multiply(rate1);
+        } else if (propertyValue.compareTo(limit2) <= 0) {
+            tax = limit1.multiply(rate1)
+                    .add(propertyValue.subtract(limit1).multiply(rate2));
+        } else if (propertyValue.compareTo(limit3) <= 0) {
+            tax = limit1.multiply(rate1)
+                    .add(limit2.subtract(limit1).multiply(rate2))
+                    .add(propertyValue.subtract(limit2).multiply(rate3));
+        } else if (propertyValue.compareTo(limit4) <= 0) {
+            tax = limit1.multiply(rate1)
+                    .add(limit2.subtract(limit1).multiply(rate2))
+                    .add(limit3.subtract(limit2).multiply(rate3))
+                    .add(propertyValue.subtract(limit3).multiply(rate4));
         } else {
-            tax = 55000 * 0.005 + (250000 - 55000) * 0.01 + (400000 - 250000) * 0.015 + (2000000 - 400000) * 0.02 + (propertyValue - 2000000) * 0.025;
+            tax = limit1.multiply(rate1)
+                    .add(limit2.subtract(limit1).multiply(rate2))
+                    .add(limit3.subtract(limit2).multiply(rate3))
+                    .add(limit4.subtract(limit3).multiply(rate4))
+                    .add(propertyValue.subtract(limit4).multiply(rate5));
         }
-        return tax;
+
+        return tax.setScale(2, RoundingMode.HALF_UP);
     }
 
 }

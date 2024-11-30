@@ -30,7 +30,7 @@ public class SecurityConfig  {
                     requests
 //                            .requestMatchers("/h2-console/**").permitAll()
                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
-                            .requestMatchers("/user/create").permitAll()
+                            .requestMatchers("/user/create", "/api/v1/loan", "/h2-console/**", "/api/v1/bank-rates").permitAll()
                             .anyRequest().authenticated();
         });
 
@@ -42,7 +42,8 @@ public class SecurityConfig  {
         // We need to disable it for our REST API as we are not using cookies for session management.
         // Also, our session management is stateless.
         http.csrf((csrf) -> csrf.disable());
-
+        http.headers((headers) -> headers.defaultsDisabled() // Disable default headers
+                .frameOptions((frameOptions) -> frameOptions.sameOrigin())); // Allow iframes for same-origin requests
         http.httpBasic(withDefaults());
         return http.build();
     }

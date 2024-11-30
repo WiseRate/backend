@@ -28,4 +28,14 @@ public class Income {
     @JoinColumn(name="fk_user_id")
     private MUser user;
 
+    @Override
+    public String toString() {
+        return "Income{" +
+                "id=" + id +
+                ", amount=" + amount +
+                ", frequency='" + frequency + '\'' +
+                ", source='" + source + '\'' +
+                ", user=" + user +
+                '}';
+    }
 }

@@ -1,5 +1,6 @@
 package com.wiserate;
 
+import com.wiserate.enums.InterestType;
 import com.wiserate.enums.LoanTypes;
 import com.wiserate.enums.PaymentFrequency;
 import com.wiserate.enums.ProvinceCA;
@@ -7,21 +8,34 @@ import com.wiserate.helpers.LandTransferTax;
 import com.wiserate.models.Loan;
 import com.wiserate.services.LoanCalculatorService;
 import org.junit.jupiter.api.Test;
+<<<<<<< HEAD
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
+=======
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+>>>>>>> 1bee661764b76ce8173c76904006035b8c3362e6
 
+import java.lang.reflect.Field;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+<<<<<<< HEAD
 @Component
+=======
+@ExtendWith(SpringExtension.class)
+@SpringBootTest
+>>>>>>> 1bee661764b76ce8173c76904006035b8c3362e6
 public class LoanCalculatorTest {
 
     // Create an instance of the class that contains the function
     private final LoanCalculatorService loanCalculator;
     private final LandTransferTax landTransferTax;
 
-
+    @Autowired
     public LoanCalculatorTest(LoanCalculatorService loanCalculator, LandTransferTax landTransferTax) {
         System.out.println("HERE 1");
         this.loanCalculator = loanCalculator;
@@ -29,10 +43,8 @@ public class LoanCalculatorTest {
         System.out.println("HERE 2");
     }
 
-    @Test
-    void testCalculatePeriodicPayment_simpleInterest() {
-        Loan loan = new Loan();
 
+<<<<<<< HEAD
         loan.setLoanType(LoanTypes.HOME_LOAN); // Set to any valid loan type
         loan.setProvince(ProvinceCA.ON); // Example: Ontario
         loan.setPrincipal(100000.0);          // Principal amount
@@ -146,4 +158,14 @@ public class LoanCalculatorTest {
 
         assertEquals(expectedTax, actualTax, 0.01, "Land transfer tax does not match expected value.");
     }
+=======
+    public void printObjectFields(Object obj) throws IllegalAccessException {
+        Field[] fields = obj.getClass().getDeclaredFields(); // Get all declared fields of the class
+        for (Field field : fields) {
+            field.setAccessible(true); // Bypass private access
+            System.out.println(field.getName() + ": " + field.get(obj)); // Print field name and value
+        }
+    }
+
+>>>>>>> 1bee661764b76ce8173c76904006035b8c3362e6
 }
