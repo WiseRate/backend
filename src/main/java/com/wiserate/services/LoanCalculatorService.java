@@ -3,6 +3,7 @@ package com.wiserate.services;
 import com.wiserate.enums.PaymentFrequency;
 import com.wiserate.enums.ProvinceCA;
 import com.wiserate.helpers.LandTransferTax;
+import com.wiserate.helpers.LoanAmortization;
 import com.wiserate.helpers.LoanHelpers;
 import com.wiserate.models.AmortizationPayment;
 import com.wiserate.models.CalculatedAmounts;
@@ -33,11 +34,13 @@ public class LoanCalculatorService {
 
     private final LandTransferTax landTransferTax;
     private final LoanHelpers loanHelpers;
+    private final LoanAmortization loanAmortization;
 
 
-    public LoanCalculatorService(LandTransferTax landTransferTax, LoanHelpers loanHelpers) {
+    public LoanCalculatorService(LandTransferTax landTransferTax, LoanHelpers loanHelpers, LoanAmortization loanAmortization) {
         this.landTransferTax = landTransferTax;
         this.loanHelpers = loanHelpers;
+        this.loanAmortization = loanAmortization;
     }
 
 
@@ -48,22 +51,29 @@ public class LoanCalculatorService {
         if (loan.getFees() == null) loan.setFees(new Fees());
         if (loan.getCalculatedAmounts() == null) loan.setCalculatedAmounts(new CalculatedAmounts());
 
+        // PAYMENTS PER YEAR
+        int paymentsPerYear = loanHelpers.noOfPaymentsPerYear(loan.getPaymentFrequency());
+        int termToYears = loan.getLoanTermMonths() / 12;
+
         Fees fees = loan.getFees();
         CalculatedAmounts calculatedAmounts = loan.getCalculatedAmounts();
 
         // PROPERTY REAL VALUE
         BigDecimal propertyValue = loan.getTotalLoanAmount();
 
-        // Principal
+        // Down-Payment
         BigDecimal downPayment = loan.getDownPayment();
 
+        // Principal
+        BigDecimal principal = propertyValue.subtract(downPayment);
+
         // CMHC INSURANCE
-        BigDecimal cmhcInsurance = calculatePremium(propertyValue, calculateDownPaymentPercentage(loan.getDownPayment(), propertyValue));
+        BigDecimal cmhcInsurance = loanHelpers.calculateCMHCPremium(principal, loanHelpers.calculateDownPaymentPercentage(loan.getDownPayment(), propertyValue));
         calculatedAmounts.setCmhcInsurance(cmhcInsurance);
 
         // SET PRINCIPAL
         // loan.setPrincipal(propertyValue - loan.getDownPayment() + cmhcInsurance);
-        loan.setPrincipal(propertyValue.subtract(loan.getDownPayment()).add(cmhcInsurance));
+        loan.setPrincipal(principal.add(cmhcInsurance));
 
         // SET ANNUAL INTEREST RATE
         // Complete Precision
@@ -75,8 +85,16 @@ public class LoanCalculatorService {
         // SET PERIODIC PAYMENT
         loan.setPeriodicPayment(periodicPayment);
 
+        // TOTAL PAYMENT FOR LOAN TERM
+        BigDecimal totalPayment = periodicPayment
+                .multiply(BigDecimal.valueOf(termToYears))
+                .multiply(BigDecimal.valueOf(paymentsPerYear));
+
         // TOTAL INTEREST
-        loan.setTotalInterest(periodicPayment.multiply(BigDecimal.valueOf(loan.getLoanTermMonths())).subtract(loan.getPrincipal()));
+        loan.setTotalInterest(totalPayment.subtract(loan.getPrincipal()));
+
+        // SET TOTAL PAYMENT
+        loan.setTotalPayment(totalPayment);
 
         // Set Ontario if province is null
         if (loan.getProvince() == null) {
@@ -107,9 +125,9 @@ public class LoanCalculatorService {
         // MAXIMUM TAX REBATE [ FIRST TIME HOME BUYER ]
         BigDecimal maxTaxRebate = BigDecimal.ZERO;
         if (loan.isNewHomeBuyer() && loan.getProvince() == ProvinceCA.ON) {
-            maxTaxRebate = getMaxTaxRebate(loan.getProvince().toString(), loan.getMunicipality());
+            maxTaxRebate = loanHelpers.getMaxTaxRebate(loan.getProvince().toString(), loan.getMunicipality());
         } else if (loan.isNewHomeBuyer()) {
-            maxTaxRebate = getMaxTaxRebate(loan.getProvince().toString());
+            maxTaxRebate = loanHelpers.getMaxTaxRebate(loan.getProvince().toString());
         }
 
         BigDecimal totalTaxes = provincialLandTransferTax.add(municipalLandTransferTax);
@@ -121,7 +139,7 @@ public class LoanCalculatorService {
         calculatedAmounts.setLandTransferTaxRebate(maxTaxRebate);
 
         // PROVINCIAL SALES TAX [ PST ]
-        BigDecimal pst = calculatePST(cmhcInsurance, loan.getProvince().toString());
+        BigDecimal pst = loanHelpers.calculatePST(cmhcInsurance, loan.getProvince().toString());
         calculatedAmounts.setProvincialSalesTax(pst);
 
         BigDecimal finalLandTransferTax = provincialLandTransferTax.add(municipalLandTransferTax).subtract(maxTaxRebate);
@@ -143,24 +161,20 @@ public class LoanCalculatorService {
         loan.setFees(fees);
         loan.setCalculatedAmounts(calculatedAmounts);
 
-        // SET TOTAL PAYMENT
-//        loan.setTotalPayment(loan.getPeriodicPayment() * loan.getLoanTermMonths());
-        loan.setTotalPayment(loan.getPeriodicPayment().multiply(BigDecimal.valueOf(loan.getLoanTermMonths())));
+
         // START DATE TODAY IF NULL
         if (loan.getStartDate() == null) {
             loan.setStartDate(LocalDate.now());
         }
 
         // END DATE
-        LocalDate endDate = calculateEndDate(loan.getStartDate(), loan.getLoanTermMonths() / 12);
+        LocalDate endDate = loanHelpers.calculateEndDate(loan.getStartDate(), loan.getLoanTermMonths() / 12);
         loan.setEndDate(endDate);
 
         log.debug("LOAN CALCULATION COMPLETED....");
 
-        List<AmortizationPayment> payment = generateAmortizationSchedule(loan);
-        // log.debug("Amortization Schedule: {}", payment);
+        List<AmortizationPayment> payment = loanAmortization.generateAmortizationSchedule(loan);
         loan.setAmortizationSchedule(payment);
-
 
         // RETURN LOAN
         return loan;
@@ -194,17 +208,25 @@ public class LoanCalculatorService {
 
 
         try {
+
+            // Calculate the periodic interest rate per payment period
+            double r_c = annualRate.doubleValue() / compoundingFrequency;
+            double exponent = (double) compoundingFrequency / paymentsPerYear;
+            double periodicRate = Math.pow(1 + r_c, exponent) - 1;
+
+            BigDecimal r = BigDecimal.valueOf(periodicRate);
+
+
             //  PMT = P * r * (1 + r)^n / (1 + r)^n - 1
-            BigDecimal r = annualRate.divide(compoundingFrequencyBD, MathContext.DECIMAL64);
+            // BigDecimal r = annualRate.divide(compoundingFrequencyBD, MathContext.DECIMAL64);
             BigDecimal n = termInYears.multiply(paymentsPerYearBD);
             BigDecimal cf = one.add(r).pow(n.intValue(), MathContext.DECIMAL64);
             BigDecimal numerator = principal.multiply(r).multiply(cf);
             BigDecimal denominator = cf.subtract(one);
-            BigDecimal PMT = numerator.divide(denominator, MathContext.DECIMAL64);
-            return PMT;
+
+            return numerator.divide(denominator, MathContext.DECIMAL64);
 
         } catch (ArithmeticException e) {
-//            System.out.println("Error in calculating periodic payment: " + e.getMessage());
             log.error("Error in calculating periodic payment: {}", e.getMessage(), e);
             return BigDecimal.ZERO;
         }
@@ -255,192 +277,6 @@ public class LoanCalculatorService {
 
         log.debug("PERIODIC PAYMENT CALCULATED: {}", periodicPayment);
         return periodicPayment;
-    }
-
-
-    // REBATE
-    private BigDecimal getMaxTaxRebate(String province) {
-        log.debug("GETTING MAXIMUM TAX REBATE FOR PROVINCE: {}", province);
-        return getMaxTaxRebate(province, "");
-    }
-
-    // REBATE OVERLOADED
-    public BigDecimal getMaxTaxRebate(String province, String municipality) {
-        log.debug("GETTING MAXIMUM TAX REBATE FOR PROVINCE: {} AND MUNICIPALITY: {}", province, municipality);
-        return switch (province) {
-            case "BC" -> BigDecimal.valueOf(8000.0);
-            case "ON" -> {
-                double provincialRebate = 4000.0;
-                double municipalRebate = switch (municipality.toUpperCase()) {
-                    case "TORONTO" -> 4475.0;
-                    default -> 0.0;
-                };
-                yield BigDecimal.valueOf(provincialRebate + municipalRebate);
-            }
-            case "PE" -> BigDecimal.valueOf(2000.0);
-            default -> BigDecimal.ZERO;
-//            throw new IllegalArgumentException("Invalid province code: " + province);
-        };
-    }
-
-
-    // CMHC Insurance
-    public BigDecimal calculatePremium(BigDecimal totalLoanAmount, BigDecimal downPaymentPercentage) {
-        log.debug("CALCULATING CMHC INSURANCE PREMIUM....");
-        // Validate input
-        log.debug("VALIDATING INPUT....");
-        if (totalLoanAmount == null || totalLoanAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Total loan amount must be greater than zero.");
-        }
-        if (downPaymentPercentage == null ||
-                downPaymentPercentage.compareTo(BigDecimal.ZERO) <= 0 ||
-                downPaymentPercentage.compareTo(BigDecimal.valueOf(20)) > 0
-        ) {
-            throw new IllegalArgumentException("Down payment percentage must be between 0% and 20%.");
-        }
-        log.debug("INPUT VALIDATED....");
-
-        log.debug("Loan Amount: {}", totalLoanAmount);
-        log.debug("Down Payment Percentage: {}", downPaymentPercentage);
-
-        NavigableMap<BigDecimal, BigDecimal> premiumRates = new TreeMap<>();
-        premiumRates.put(BigDecimal.valueOf(5), new BigDecimal("0.04"));
-        premiumRates.put(BigDecimal.valueOf(10), new BigDecimal("0.031"));
-        premiumRates.put(BigDecimal.valueOf(15), new BigDecimal("0.028"));
-
-        // ****  PREMIUM RATE  *****
-        // floorEntry method of TreeMap:
-        // FIRST get List of KEYs that are less than and equal >= SEARCHED KEY
-        // Then returns the key with the highest value
-        BigDecimal premiumRate = premiumRates.floorEntry(downPaymentPercentage).getValue();
-        log.debug("Premium Rate: {}", premiumRate);
-
-        // ****  PREMIUM  *****
-        BigDecimal premium = totalLoanAmount.multiply(premiumRate);
-        log.debug("Premium: {}", premium);
-
-        premium = premium.setScale(2, RoundingMode.HALF_UP);
-        return premium;
-    }
-
-
-    // PST
-    public BigDecimal calculatePST(BigDecimal cmhcAmount, String province) {
-        log.debug("CALCULATING PROVINCIAL SALES TAX....");
-        double rate = switch (province.toUpperCase()) {
-            case "MB" -> 0.07;
-            case "ON" -> 0.08;
-            case "QC" -> 0.09;
-            case "SK" -> 0.06;
-            default -> 0.0;
-        };
-//        return cmhcAmount * rate;
-        return cmhcAmount.multiply(BigDecimal.valueOf(rate));
-    }
-
-
-    // Calculate end date based on start date and loan term
-    public LocalDate calculateEndDate(@NotNull LocalDate startDate, int loanTermYears) {
-        log.debug("CALCULATING END DATE....");
-        return startDate.plusYears(loanTermYears);
-    }
-
-
-    // Calculate down payment percentage (optional utility)
-    public BigDecimal calculateDownPaymentPercentage(BigDecimal downPayment, BigDecimal totalLoanAmount) {
-        log.debug("CALCULATING DOWN PAYMENT PERCENTAGE....");
-        log.debug("Down Payment: {}", downPayment);
-        return downPayment.divide(totalLoanAmount, 2, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
-    }
-
-
-    // Generate Amortization Schedule
-    public List<AmortizationPayment> generateAmortizationSchedule(Loan loan) {
-        List<AmortizationPayment> schedule = new ArrayList<>();
-
-        // Extract necessary data from the loan
-        BigDecimal remainingBalance = loan.getPrincipal();
-        BigDecimal periodicPayment = loan.getPeriodicPayment();
-        int paymentsPerYear = loanHelpers.noOfPaymentsPerYear(loan.getPaymentFrequency());
-        BigDecimal periodicInterestRate = loan.getAnnualInterestRate()
-                .divide(BigDecimal.valueOf(paymentsPerYear), MathContext.DECIMAL64);
-        int totalPayments = loan.getLoanTermMonths();
-
-        LocalDate startDate = loan.getStartDate();
-        int startYear = startDate.getYear();
-
-        BigDecimal TotalPaid = BigDecimal.ZERO;
-
-        BigDecimal yearlyTotalPaid = BigDecimal.ZERO;
-        BigDecimal yearlyPrincipalPaid = BigDecimal.ZERO;
-        BigDecimal yearlyInterestPaid = BigDecimal.ZERO;
-
-        BigDecimal tolerance = BigDecimal.valueOf(0.01);
-
-        // Initial State when nothing is paid
-        schedule.add(AmortizationPayment.builder()
-                .year(startYear)
-                .totalPaid(0.0)
-                .principalPaid(0.0)
-                .interestPaid(0.0)
-                .remainingBalance(remainingBalance.doubleValue())
-                .loan(loan)
-                .build());
-
-        log.debug("Period: 0, Current Year: {}, Total Paid: {}, Total Interest: {}, Total Principal: {}, Remaining Balance: {}",
-                startYear, TotalPaid, yearlyInterestPaid, yearlyPrincipalPaid, remainingBalance);
-
-        // Iterate over the loan term
-        for (int period = 1; period <= totalPayments; period++) {
-
-            BigDecimal interestPaid = remainingBalance.multiply(periodicInterestRate).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal principalPaid = periodicPayment.subtract(interestPaid).setScale(2, RoundingMode.HALF_UP);
-
-            // Adjust remaining balance
-            if (remainingBalance.compareTo(principalPaid) <= 0) {
-                interestPaid = remainingBalance.multiply(periodicInterestRate).setScale(2, RoundingMode.HALF_UP);
-                principalPaid = remainingBalance;
-                periodicPayment = principalPaid.add(interestPaid);
-                remainingBalance = BigDecimal.ZERO;
-            } else {
-                remainingBalance = remainingBalance.subtract(principalPaid).setScale(2, RoundingMode.HALF_UP);
-            }
-
-            // Accumulate yearly totals
-            yearlyInterestPaid = yearlyInterestPaid.add(interestPaid);
-            yearlyPrincipalPaid = yearlyPrincipalPaid.add(principalPaid);
-            yearlyTotalPaid = yearlyTotalPaid.add(periodicPayment);
-
-            TotalPaid = TotalPaid.add(periodicPayment);
-
-            // Add yearly entry at the end of each year or when loan is fully paid
-            if (period % paymentsPerYear == 0 || remainingBalance.compareTo(tolerance) <= 0) {
-                int year = startYear + period / paymentsPerYear;
-
-                log.debug("Period: {}, Current Year: {}, Total Paid: {}, Total Interest: {}, Total Principal: {}, Remaining Balance: {}",
-                        period, year, TotalPaid, yearlyInterestPaid, yearlyPrincipalPaid, remainingBalance);
-
-                schedule.add(AmortizationPayment.builder()
-                        .year(year)
-                        .totalPaid(TotalPaid.doubleValue())
-                        .principalPaid(yearlyPrincipalPaid.doubleValue())
-                        .interestPaid(yearlyInterestPaid.doubleValue())
-                        .remainingBalance(remainingBalance.doubleValue())
-                        .loan(loan)
-                        .build());
-
-                // Reset yearly totals
-                yearlyInterestPaid = BigDecimal.ZERO;
-                yearlyPrincipalPaid = BigDecimal.ZERO;
-                yearlyTotalPaid = BigDecimal.ZERO;
-
-                // Break if balance is fully paid
-                if (remainingBalance.compareTo(tolerance) <= 0) {
-                    break;
-                }
-            }
-        }
-        return schedule;
     }
 
 

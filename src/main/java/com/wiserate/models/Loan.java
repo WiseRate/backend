@@ -19,7 +19,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,6 +26,7 @@ import java.util.List;
 @Entity
 @DynamicUpdate
 @ToString
+@Builder
 public class Loan {
 
     @Id
@@ -114,7 +114,7 @@ public class Loan {
 
     // CascadeType.ALL ensure that when we save a loan, it will save all the amortization payments as well.
     // orphanRemoval = true ensures that when we remove a loan, it will remove all the amortization payments as well.
-    @OneToMany(mappedBy = "loan", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "loan", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<AmortizationPayment> amortizationSchedule = new ArrayList<>();
 
 
@@ -128,6 +128,7 @@ public class Loan {
 // Cascade not needed here as we are not saving User object from Loan object
 // FetchType.LAZY is used to load the user object only when it is needed
 //      else .Eager is used to load the full user object every time
+
 
 /*
 

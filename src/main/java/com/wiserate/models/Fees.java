@@ -1,14 +1,16 @@
 package com.wiserate.models;
 
 import jakarta.persistence.Embeddable;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 
 @Setter
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 @Embeddable
+@Builder
 public class Fees {
     private BigDecimal insurancePremium = BigDecimal.ZERO;      //   700
     private BigDecimal lawyerFee = BigDecimal.ZERO;             //  1000

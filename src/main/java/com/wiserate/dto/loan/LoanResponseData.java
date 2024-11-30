@@ -10,6 +10,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -24,7 +25,7 @@ public class LoanResponseData {
     private CalculatedAmounts calculatedAmounts;
     private LocalDate startDate;
     private LocalDate endDate;
-    private AmortizationPayment amortizationPayment;
+    private List<AmortizationPaymentDTO> amortizationSchedule;
 
     @Override
     public String toString() {

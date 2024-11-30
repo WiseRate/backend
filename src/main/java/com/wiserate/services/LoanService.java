@@ -73,6 +73,7 @@ public class LoanService {
     // LOAN TO RESPONSE DATA
     public LoanResponseData convertToLoanResponseData(Loan loan) {
         log.debug("CONVERTING TO RESPONSE DATA....");
+        log.debug("CHECKING amortizationSchedule DATA: {}", loan.getAmortizationSchedule().size());
         return myMappers.mapLoanToResponseData(loan);
     }
 
