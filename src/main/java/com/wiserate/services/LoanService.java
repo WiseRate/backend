@@ -1,16 +1,12 @@
 package com.wiserate.services;
 
 import com.wiserate.dto.loan.LoanResponseData;
-import com.wiserate.dto.loan.MyMappers;
+import com.wiserate.dto.MyMappers;
 import com.wiserate.dto.loan.NewLoanRequestData;
 import com.wiserate.exceptions.wiseRate.ErrorInitializingLoanException;
 import com.wiserate.models.Loan;
-import com.wiserate.models.MUser;
 import com.wiserate.repository.LoanRepository;
-import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

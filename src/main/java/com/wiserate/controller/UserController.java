@@ -81,8 +81,9 @@ public class UserController {
     @PutMapping("/update")
     public ResponseEntity<?> updateUser(@RequestBody UpdateRequest updateRequest, Authentication authentication) {
         try {
-            UserDTO user = mUserService.updateMUser(updateRequest, authentication);
-            return new ResponseEntity<>(user, HttpStatus.OK);
+            MUser user = mUserService.updateMUser(updateRequest, authentication);
+            UserDTO userDTO = new UserDTO(user);
+            return new ResponseEntity<>(userDTO, HttpStatus.OK);
         } catch (Exception e) {
             ErrorResponse errorResponse = new ErrorResponse("User update failed", e.getMessage(), HttpStatus.BAD_REQUEST.value());
             return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
