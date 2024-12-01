@@ -4,12 +4,15 @@ package com.wiserate.config;
 import com.wiserate.enums.MUserRoles;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -24,10 +27,11 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfig  {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, CustomAuthenticationEntryPoint customAuthenticationEntryPoint) throws Exception {
         http
                 .authorizeHttpRequests((requests) -> {
                     requests
+                            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()     // Allow all OPTIONS requests for CORS
 //                            .requestMatchers("/h2-console/**").permitAll()
                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
                             .requestMatchers("/user/create", "/api/v1/loan", "/h2-console/**", "/api/v1/bank-rates").permitAll()
@@ -44,8 +48,28 @@ public class SecurityConfig  {
         http.csrf((csrf) -> csrf.disable());
         http.headers((headers) -> headers.defaultsDisabled() // Disable default headers
                 .frameOptions((frameOptions) -> frameOptions.sameOrigin())); // Allow iframes for same-origin requests
+
+        http.exceptionHandling((exceptions) -> exceptions.authenticationEntryPoint(customAuthenticationEntryPoint));
         http.httpBasic(withDefaults());
         return http.build();
+    }
+
+    // ALLOWING CORS FOR OUR FRONTEND APPLICATION
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        WebMvcConfigurer webMvcConfigurer = new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins("http://localhost:3000")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE")
+                        .allowedHeaders("*")
+                        .allowCredentials(true)
+                ;
+
+            }
+        };
+        return webMvcConfigurer;
     }
 
     //  Password Encrypt
@@ -76,6 +100,9 @@ public class SecurityConfig  {
 //        };
 //        return webSecurityCustomizer;
 //    }
+
+
+
 
 
 }

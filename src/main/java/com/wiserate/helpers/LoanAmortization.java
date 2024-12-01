@@ -68,7 +68,7 @@ public class LoanAmortization {
 
         // Iterate over the loan term
         for (int period = 1; period < totalPayments + 1; period++) {
-            log.debug("Calculating for period: {}", period);
+            // log.debug("Calculating for period: {}", period);
 
             BigDecimal interestPaid = remainingBalance.multiply(periodicInterestRate).setScale(2, RoundingMode.HALF_UP);
             BigDecimal principalPaid = periodicPayment.subtract(interestPaid).setScale(2, RoundingMode.HALF_UP);
