@@ -7,6 +7,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class AmortizationPaymentDTO {
     private Integer year;
     private Double totalPaid;

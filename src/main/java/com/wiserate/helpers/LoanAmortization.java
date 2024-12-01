@@ -95,17 +95,6 @@ public class LoanAmortization {
                     remainingBalance = BigDecimal.ZERO;
                 }
 
-                // log.debug("Period: {}, Current Year: {}, Total Paid: {}, Total Interest: {}, Total Principal: {}, Remaining Balance: {}",
-                //         period, year, TotalPaid, yearlyInterestPaid, yearlyPrincipalPaid, remainingBalance);
-
-                // schedule.add(AmortizationPayment.builder()
-                //         .year(year)
-                //         .totalPaid(yearlyTotalPaid.setScale(0, RoundingMode.HALF_UP).doubleValue())
-                //         .principalPaid(yearlyPrincipalPaid.setScale(0, RoundingMode.HALF_UP).doubleValue())
-                //         .interestPaid(yearlyInterestPaid.setScale(0, RoundingMode.HALF_UP).doubleValue())
-                //         .remainingBalance(remainingBalance.setScale(0, RoundingMode.HALF_UP).doubleValue())
-                //         .loan(loan)
-                //         .build());
                 schedule.add(AmortizationPayment.builder()
                         .year(year)
                         .totalPaid(yearlyTotalPaid.setScale(2, RoundingMode.HALF_UP).doubleValue())
