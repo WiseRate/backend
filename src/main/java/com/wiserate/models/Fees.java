@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Embeddable
 @Builder
+// ALL FEES
 public class Fees {
     private BigDecimal insurancePremium = BigDecimal.ZERO;      //   700
     private BigDecimal lawyerFee = BigDecimal.ZERO;             //  1000

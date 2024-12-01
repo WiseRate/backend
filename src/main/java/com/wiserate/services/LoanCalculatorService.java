@@ -181,6 +181,7 @@ public class LoanCalculatorService {
     }
 
 
+    // Periodic Payment Calculations.
     public BigDecimal calculatePeriodicPaymentCompoundInterest(
             BigDecimal principal,
             BigDecimal annualRate,

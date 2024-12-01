@@ -156,6 +156,7 @@ public class MUserService {
         }
     }
 
+    // ADMIN REQUEST
     public MUser updateMUserAsAdmin(UpdateRequest updateRequest, Authentication authentication) {
         log.debug("Admin Update Request for User ID: {}", updateRequest.getId());
 
@@ -180,6 +181,7 @@ public class MUserService {
         return updatedUser;
     }
 
+    // USER REQUEST
     public MUser updateMUser(UpdateRequest updateRequest, Authentication authentication) {
         log.debug("User Update Request for User ID: {}", updateRequest.getId());
 

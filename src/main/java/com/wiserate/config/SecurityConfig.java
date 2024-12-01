@@ -50,7 +50,7 @@ public class SecurityConfig  {
                 .frameOptions((frameOptions) -> frameOptions.sameOrigin())); // Allow iframes for same-origin requests
 
         http.exceptionHandling((exceptions) -> exceptions.authenticationEntryPoint(customAuthenticationEntryPoint));
-        http.httpBasic(withDefaults());
+        http.httpBasic((httpBasic) -> httpBasic.authenticationEntryPoint(customAuthenticationEntryPoint));
         return http.build();
     }
 

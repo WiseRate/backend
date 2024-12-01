@@ -104,9 +104,6 @@ public class WiserateApplication implements CommandLineRunner {
 
 
 
-
-
-
 		mUserService.createMUser(user);
 		mUserService.createMUser(admin);
 

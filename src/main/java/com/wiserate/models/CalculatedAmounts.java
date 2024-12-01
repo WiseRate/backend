@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 @Setter
 @Getter
 @Embeddable
+// ALL CALCULATIONS
 public class CalculatedAmounts {
     private BigDecimal municipalLandTransferTax = BigDecimal.ZERO;
     private BigDecimal provincialLandTransferTax = BigDecimal.ZERO;
