@@ -34,7 +34,13 @@ public class SecurityConfig  {
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()     // Allow all OPTIONS requests for CORS
 //                            .requestMatchers("/h2-console/**").permitAll()
                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
-                            .requestMatchers("/user/create", "/api/v1/loan", "/h2-console/**", "/api/v1/bank-rates").permitAll()
+                            .requestMatchers(
+                                    "/user/create",
+                                    "/api/v1/loan",
+                                    "/h2-console/**",
+                                    "/api/v1/bank-rates",
+                                    "/api/v1/bank-rates-simple"
+                            ).permitAll()
                             .anyRequest().authenticated();
         });
 

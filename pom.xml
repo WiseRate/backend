@@ -32,6 +32,7 @@
     </properties>
     <dependencies>
 
+        <!--    MAPSTRUCT START    -->
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
@@ -49,6 +50,15 @@
             <version>0.2.0</version>
             <scope>provided</scope>
         </dependency>
+        <!--    MAPSTRUCT END    -->
+
+        <!--    PDF iTextPDF START    -->
+        <dependency>
+            <groupId>com.itextpdf</groupId>
+            <artifactId>itextpdf</artifactId>
+            <version>5.5.13.4</version>
+        </dependency>
+        <!--    PDF iTextPDF END    -->
 
 
         <dependency>

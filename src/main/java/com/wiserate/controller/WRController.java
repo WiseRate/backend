@@ -8,11 +8,18 @@ import com.wiserate.models.Loan;
 import com.wiserate.services.BankRatesService;
 import com.wiserate.services.LoanService;
 import com.wiserate.services.MUserService;
+import com.wiserate.services.PdfGeneratorService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -23,15 +30,18 @@ public class WRController {
     private final LoanService loanService;
     private final MUserService mUserService;
     private final BankRatesService bankRatesService;
+    private final PdfGeneratorService pdfGeneratorService;
 
 
     public WRController(
             LoanService loanService,
-            MUserService mUserService, BankRatesService bankRatesService
+            MUserService mUserService, BankRatesService bankRatesService,
+            PdfGeneratorService pdfGeneratorService
     ) {
         this.loanService = loanService;
         this.mUserService = mUserService;
         this.bankRatesService = bankRatesService;
+        this.pdfGeneratorService = pdfGeneratorService;
     }
 
     // @GetMapping("/")
@@ -72,6 +82,23 @@ public class WRController {
         }
     }
 
+    @GetMapping("/bank-rates-simple")
+    public ResponseEntity<?> getBankRatesSimple() {
+        try {
+            log.debug("GETTING BANK RATES....");
+            Map<String, Float> bankRates = new HashMap<>();
+            bankRates.put("RBC", 2.99f);
+            bankRates.put("TD", 3.29f);
+            bankRates.put("BMO", 3.49f);
+            bankRates.put("Scotia", 3.69f);
+            bankRates.put("CIBC", 3.89f);
+            return ResponseEntity.ok(bankRates);
+        } catch (Exception e) {
+            log.error("FAILED TO GET BANK RATES....");
+            return ResponseEntity.badRequest().body("Failed to get bank rates");
+        }
+    }
+
     @GetMapping("/bank-rates")
     public ResponseEntity<?> getBankRates() {
         try {
@@ -82,6 +109,26 @@ public class WRController {
             return ResponseEntity.badRequest().body("Failed to get bank rates");
         }
     }
+
+    @GetMapping("/generate-amortization-pdf")
+    public ResponseEntity<?> generateAmortizationPdf(@Valid @RequestBody NewLoanRequestData newLoanRequestData) {
+        try {
+            log.debug("GENERATING AMORTIZATION PDF....");
+            Loan loan = loanService.convertToLoan(newLoanRequestData);
+            loan = loanService.initializeLoan(loan);
+            LoanResponseData responseData = loanService.convertToLoanResponseData(loan);
+            byte[] pdf = pdfGeneratorService.generateAmortizationSchedulePdf("Wiserate", responseData);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", "amortization-schedule.pdf");
+            headers.setContentLength(pdf.length);
+            return ResponseEntity.ok().headers(headers).body(pdf);
+        } catch (Exception e) {
+            log.error("FAILED TO GENERATE AMORTIZATION PDF....");
+            return ResponseEntity.badRequest().body("Failed to generate amortization pdf");
+        }
+    }
+
 }
 
 
