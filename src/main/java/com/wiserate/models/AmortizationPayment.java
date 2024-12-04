@@ -18,7 +18,7 @@ public class AmortizationPayment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name= "\"year\"", nullable = false)
     private Integer year;
 
     @Column(nullable = false)

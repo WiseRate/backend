@@ -7,7 +7,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -24,7 +26,19 @@ import static org.springframework.security.config.Customizer.withDefaults;
 // Enable Custom defined Configuration from this class
 @EnableMethodSecurity
 // Enable Method Level Security
-public class SecurityConfig  {
+public class SecurityConfig {
+
+    private static final String[] AUTH_WHITELIST = {
+            "/user/create",
+            "/api/v1/loan",
+            "/h2-console/**",
+            "/api/v1/bank-rates",
+            "/api/v1/bank-rates-simple",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/v3/api-docs.yaml"
+    };
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, CustomAuthenticationEntryPoint customAuthenticationEntryPoint) throws Exception {
@@ -34,15 +48,9 @@ public class SecurityConfig  {
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()     // Allow all OPTIONS requests for CORS
 //                            .requestMatchers("/h2-console/**").permitAll()
                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
-                            .requestMatchers(
-                                    "/user/create",
-                                    "/api/v1/loan",
-                                    "/h2-console/**",
-                                    "/api/v1/bank-rates",
-                                    "/api/v1/bank-rates-simple"
-                            ).permitAll()
+                            .requestMatchers(AUTH_WHITELIST).permitAll()
                             .anyRequest().authenticated();
-        });
+                });
 
         //  by making stateless we don't have to remember user state,
         //  each request will be verified independently.
@@ -55,7 +63,7 @@ public class SecurityConfig  {
         http.headers((headers) -> headers.defaultsDisabled() // Disable default headers
                 .frameOptions((frameOptions) -> frameOptions.sameOrigin())); // Allow iframes for same-origin requests
 
-        http.exceptionHandling((exceptions) -> exceptions.authenticationEntryPoint(customAuthenticationEntryPoint));
+        // http.exceptionHandling((exceptions) -> exceptions.authenticationEntryPoint(customAuthenticationEntryPoint));
         http.httpBasic((httpBasic) -> httpBasic.authenticationEntryPoint(customAuthenticationEntryPoint));
         return http.build();
     }
@@ -93,22 +101,22 @@ public class SecurityConfig  {
 //    }
 
     // IGNORING SECURITY
-//    public WebSecurityCustomizer webSecurityCustomizer() {
-//        //  ONE WAY ->
-//        //  return (web) -> web.ignoring().requestMatchers("/css/**", "/js/**", "/images/**");
-//
-//        //  ANOTHER WAY ->
-//        WebSecurityCustomizer webSecurityCustomizer = new WebSecurityCustomizer() {
-//            @Override
-//            public void customize(WebSecurity web) {
-//                web.ignoring().requestMatchers("/css/**", "/js/**", "/images/**");
-//            }
-//        };
-//        return webSecurityCustomizer;
-//    }
-
-
-
+    // public WebSecurityCustomizer webSecurityCustomizer() {
+    //     //  ONE WAY ->
+    //     //  return (web) -> web.ignoring().requestMatchers("/css/**", "/js/**", "/images/**");
+    //
+    //     //  ANOTHER WAY ->
+    //     WebSecurityCustomizer webSecurityCustomizer = new WebSecurityCustomizer() {
+    //         @Override
+    //         public void customize(WebSecurity web) {
+    //             web.ignoring().requestMatchers(
+    //                     "/swagger-ui/**",
+    //                     "/v3/api-docs/**"
+    //             );
+    //         }
+    //     };
+    //     return webSecurityCustomizer;
+    // }
 
 
 }
