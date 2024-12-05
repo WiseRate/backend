@@ -75,12 +75,12 @@ public class LoanHelpers {
         if (totalLoanAmount == null || totalLoanAmount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Total loan amount must be greater than zero.");
         }
-        if (downPaymentPercentage == null ||
-                downPaymentPercentage.compareTo(BigDecimal.ZERO) <= 0 ||
-                downPaymentPercentage.compareTo(BigDecimal.valueOf(20)) > 0
-        ) {
-            throw new IllegalArgumentException("Down payment percentage must be between 0% and 20%.");
-        }
+        // if (downPaymentPercentage == null ||
+        //         downPaymentPercentage.compareTo(BigDecimal.ZERO) <= 0 ||
+        //         downPaymentPercentage.compareTo(BigDecimal.valueOf(20)) > 0
+        // ) {
+        //     throw new IllegalArgumentException("Down payment percentage must be between 0% and 20%.");
+        // }
         log.debug("INPUT VALIDATED....");
 
         log.debug("Loan Amount: {}", totalLoanAmount);
