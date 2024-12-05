@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -59,11 +60,12 @@ public class SecurityConfig {
         // CSRF Protection is enabled by default in Spring Security.
         // We need to disable it for our REST API as we are not using cookies for session management.
         // Also, our session management is stateless.
-        http.csrf((csrf) -> csrf.disable());
+        http.csrf(csrf -> csrf.ignoringRequestMatchers(AUTH_WHITELIST));
+        http.csrf(AbstractHttpConfigurer::disable);
         http.headers((headers) -> headers.defaultsDisabled() // Disable default headers
                 .frameOptions((frameOptions) -> frameOptions.sameOrigin())); // Allow iframes for same-origin requests
 
-        // http.exceptionHandling((exceptions) -> exceptions.authenticationEntryPoint(customAuthenticationEntryPoint));
+        http.exceptionHandling((exceptions) -> exceptions.authenticationEntryPoint(customAuthenticationEntryPoint));
         http.httpBasic((httpBasic) -> httpBasic.authenticationEntryPoint(customAuthenticationEntryPoint));
         return http.build();
     }
@@ -101,6 +103,7 @@ public class SecurityConfig {
 //    }
 
     // IGNORING SECURITY
+    // @Bean
     // public WebSecurityCustomizer webSecurityCustomizer() {
     //     //  ONE WAY ->
     //     //  return (web) -> web.ignoring().requestMatchers("/css/**", "/js/**", "/images/**");
@@ -111,7 +114,9 @@ public class SecurityConfig {
     //         public void customize(WebSecurity web) {
     //             web.ignoring().requestMatchers(
     //                     "/swagger-ui/**",
-    //                     "/v3/api-docs/**"
+    //                     "/v3/api-docs/**",
+    //                     "/v3/api-docs.yaml",
+    //                     "/swagger-ui.html"
     //             );
     //         }
     //     };
