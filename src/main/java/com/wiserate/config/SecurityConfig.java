@@ -39,7 +39,8 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/v3/api-docs/**",
             "/v3/api-docs.yaml",
-            "/api/v1/generate-amortization-pdf"
+            "/api/v1/generate-amortization-pdf",
+            "/api/v1/amortization-schedule"
     };
 
     @Bean
@@ -48,7 +49,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests((requests) -> {
                     requests
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()     // Allow all OPTIONS requests for CORS
-//                            .requestMatchers("/h2-console/**").permitAll()
+//                           .requestMatchers("/h2-console/**").permitAll()
                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
                             .requestMatchers(AUTH_WHITELIST).permitAll()
                             .anyRequest().authenticated();
@@ -63,6 +64,7 @@ public class SecurityConfig {
         // Also, our session management is stateless.
         http.csrf(csrf -> csrf.ignoringRequestMatchers(AUTH_WHITELIST));
         http.csrf(AbstractHttpConfigurer::disable);
+
         http.headers((headers) -> headers.defaultsDisabled() // Disable default headers
                 .frameOptions((frameOptions) -> frameOptions.sameOrigin())); // Allow iframes for same-origin requests
 
@@ -92,6 +94,7 @@ public class SecurityConfig {
     //  Password Encrypt
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
+
         return new BCryptPasswordEncoder();
     }
 

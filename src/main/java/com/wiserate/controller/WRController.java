@@ -129,6 +129,21 @@ public class WRController {
         }
     }
 
+    @PostMapping("/amortization-schedule")
+    public ResponseEntity<?> getAmortizationSchedule(@Valid @RequestBody NewLoanRequestData newLoanRequestData) {
+        try {
+            log.debug("FETCHING AMORTIZATION SCHEDULE: {}", newLoanRequestData);
+            Loan loan = loanService.convertToLoan(newLoanRequestData);
+            loan = loanService.initializeLoan(loan);
+            LoanResponseData responseData = loanService.convertToLoanResponseData(loan);
+            return ResponseEntity.ok(responseData);
+        } catch (Exception e) {
+            log.error("FAILED TO FETCH AMORTIZATION SCHEDULE....");
+            return ResponseEntity.badRequest().body("Failed to fetch amortization schedule");
+        }
+    }
+
+
 }
 
 
