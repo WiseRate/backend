@@ -110,7 +110,7 @@ public class WRController {
         }
     }
 
-    @GetMapping("/generate-amortization-pdf")
+    @PostMapping("/generate-amortization-pdf")
     public ResponseEntity<?> generateAmortizationPdf(@Valid @RequestBody NewLoanRequestData newLoanRequestData) {
         try {
             log.debug("GENERATING AMORTIZATION PDF....");
