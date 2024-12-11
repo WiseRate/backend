@@ -39,6 +39,7 @@ public class SecurityConfig {
             "/v3/api-docs.yaml",
             "/api/v1/generate-amortization-pdf",
             "/api/v1/amortization-schedule",
+            "/error"
     };
 
     private static final String[] AUTH_WHITELIST_FRONTEND = {
