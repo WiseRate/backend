@@ -57,7 +57,8 @@ public class SecurityConfig {
                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
                             .requestMatchers(AUTH_WHITELIST).permitAll()
                             .requestMatchers(AUTH_WHITELIST_FRONTEND).permitAll()
-                            .anyRequest().authenticated();
+                            // .anyRequest().authenticated();
+                            .anyRequest().permitAll();
                 });
 
         //  by making stateless we don't have to remember user state,
