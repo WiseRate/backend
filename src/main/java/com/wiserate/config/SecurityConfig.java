@@ -59,8 +59,7 @@ public class SecurityConfig {
                     requests
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()     // Allow all OPTIONS requests for CORS
 //                           .requestMatchers("/h2-console/**").permitAll()
-                            .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
-                            // JOIN THE TWO ARRAYS
+//                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
                             .requestMatchers(merged_array).permitAll()
                             .anyRequest().authenticated();
                     // .anyRequest().permitAll();
