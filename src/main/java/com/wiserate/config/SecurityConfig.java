@@ -73,7 +73,7 @@ public class SecurityConfig {
         // CSRF Protection is enabled by default in Spring Security.
         // We need to disable it for our REST API as we are not using cookies for session management.
         // Also, our session management is stateless.
-        http.csrf(csrf -> csrf.ignoringRequestMatchers(AUTH_WHITELIST));
+        http.csrf(csrf -> csrf.ignoringRequestMatchers(merged_array));
         http.csrf(AbstractHttpConfigurer::disable);
 
         http.headers((headers) -> headers.defaultsDisabled() // Disable default headers
