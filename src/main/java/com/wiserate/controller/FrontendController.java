@@ -8,6 +8,6 @@ public class FrontendController {
 
     @GetMapping("/{path:^(?!api).*}")
     public String forward() {
-        return "forward:/index.html";
+        return "forward:/";
     }
 }
