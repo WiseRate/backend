@@ -32,6 +32,15 @@
     </properties>
     <dependencies>
 
+        <!-- POSTGRESQL -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.4</version>
+        </dependency>
+        <!-- POSTGRESQL -->
+
+
         <!--    MAPSTRUCT START    -->
         <dependency>
             <groupId>org.mapstruct</groupId>
