@@ -17,6 +17,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.util.Arrays;
+import java.util.stream.Stream;
+
 @Configuration
 // Telling Spring that Register this class in Spring Context
 @EnableWebSecurity(debug = false)
@@ -49,16 +52,18 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, CustomAuthenticationEntryPoint customAuthenticationEntryPoint) throws Exception {
+        String[] merged_array = Stream.concat(Arrays.stream(AUTH_WHITELIST), Arrays.stream(AUTH_WHITELIST_FRONTEND)).toArray(String[]::new);
+
         http
                 .authorizeHttpRequests((requests) -> {
                     requests
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()     // Allow all OPTIONS requests for CORS
 //                           .requestMatchers("/h2-console/**").permitAll()
                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
-                            .requestMatchers(AUTH_WHITELIST).permitAll()
-                            .requestMatchers(AUTH_WHITELIST_FRONTEND).permitAll()
-                            // .anyRequest().authenticated();
-                            .anyRequest().permitAll();
+                            // JOIN THE TWO ARRAYS
+                            .requestMatchers(merged_array).permitAll()
+                            .anyRequest().authenticated();
+                    // .anyRequest().permitAll();
                 });
 
         //  by making stateless we don't have to remember user state,
