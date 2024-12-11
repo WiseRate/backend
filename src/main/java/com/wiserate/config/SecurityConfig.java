@@ -17,8 +17,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
 @Configuration
 // Telling Spring that Register this class in Spring Context
 @EnableWebSecurity(debug = false)
@@ -41,12 +39,11 @@ public class SecurityConfig {
             "/v3/api-docs.yaml",
             "/api/v1/generate-amortization-pdf",
             "/api/v1/amortization-schedule",
+    };
 
-            // FRONTEND
-            "/",
-            "/index.html",
-            "/favicon.ico",
-            "/static/**",
+    private static final String[] AUTH_WHITELIST_FRONTEND = {
+            "/", "/index.html", "/favicon.ico", "/static/**",
+            "/{path:^(?!api).*$}"
     };
 
     @Bean
@@ -58,6 +55,7 @@ public class SecurityConfig {
 //                           .requestMatchers("/h2-console/**").permitAll()
                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
                             .requestMatchers(AUTH_WHITELIST).permitAll()
+                            .requestMatchers(AUTH_WHITELIST_FRONTEND).permitAll()
                             .anyRequest().authenticated();
                 });
 
