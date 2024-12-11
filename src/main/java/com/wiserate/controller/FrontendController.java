@@ -8,9 +8,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 public class FrontendController {
 
     // Path not start with /api
-    @GetMapping(value = "/{path:^(?!api).*$}")
+    @GetMapping(value = "/{path:[^\\.]*}")
     public String forward(@PathVariable String path) {
-        System.out.println("Matched path: " + path);
         return "forward:/index.html";
     }
 }
