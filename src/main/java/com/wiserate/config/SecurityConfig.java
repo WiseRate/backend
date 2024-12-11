@@ -40,7 +40,13 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/v3/api-docs.yaml",
             "/api/v1/generate-amortization-pdf",
-            "/api/v1/amortization-schedule"
+            "/api/v1/amortization-schedule",
+
+            // FRONTEND
+            "/",
+            "/index.html",
+            "/favicon.ico",
+            "/static/**",
     };
 
     @Bean
@@ -107,25 +113,24 @@ public class SecurityConfig {
 //    }
 
     // IGNORING SECURITY
-    // @Bean
-    // public WebSecurityCustomizer webSecurityCustomizer() {
-    //     //  ONE WAY ->
-    //     //  return (web) -> web.ignoring().requestMatchers("/css/**", "/js/**", "/images/**");
-    //
-    //     //  ANOTHER WAY ->
-    //     WebSecurityCustomizer webSecurityCustomizer = new WebSecurityCustomizer() {
-    //         @Override
-    //         public void customize(WebSecurity web) {
-    //             web.ignoring().requestMatchers(
-    //                     "/swagger-ui/**",
-    //                     "/v3/api-docs/**",
-    //                     "/v3/api-docs.yaml",
-    //                     "/swagger-ui.html"
-    //             );
-    //         }
-    //     };
-    //     return webSecurityCustomizer;
-    // }
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        //  ONE WAY ->
+        //  return (web) -> web.ignoring().requestMatchers("/css/**", "/js/**", "/images/**");
+
+        //  ANOTHER WAY ->
+        WebSecurityCustomizer webSecurityCustomizer = new WebSecurityCustomizer() {
+            @Override
+            public void customize(WebSecurity web) {
+                web.ignoring().requestMatchers(
+                        // FRONTEND STATIC FILES
+                        "/css/**",
+                        "/js/**"
+                );
+            }
+        };
+        return webSecurityCustomizer;
+    }
 
 
 }
