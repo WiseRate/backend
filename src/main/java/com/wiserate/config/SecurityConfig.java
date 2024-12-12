@@ -17,7 +17,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import static org.springframework.security.config.Customizer.withDefaults;
+import java.util.Arrays;
+import java.util.stream.Stream;
 
 @Configuration
 // Telling Spring that Register this class in Spring Context
@@ -40,19 +41,28 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/v3/api-docs.yaml",
             "/api/v1/generate-amortization-pdf",
-            "/api/v1/amortization-schedule"
+            "/api/v1/amortization-schedule",
+            "/error"
+    };
+
+    private static final String[] AUTH_WHITELIST_FRONTEND = {
+            "/", "/index.html", "/favicon.ico", "/static/**",
+            "/{path:^(?!api).*$}"
     };
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, CustomAuthenticationEntryPoint customAuthenticationEntryPoint) throws Exception {
+        String[] merged_array = Stream.concat(Arrays.stream(AUTH_WHITELIST), Arrays.stream(AUTH_WHITELIST_FRONTEND)).toArray(String[]::new);
+
         http
                 .authorizeHttpRequests((requests) -> {
                     requests
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()     // Allow all OPTIONS requests for CORS
 //                           .requestMatchers("/h2-console/**").permitAll()
-                            .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
-                            .requestMatchers(AUTH_WHITELIST).permitAll()
+//                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
+                            .requestMatchers(merged_array).permitAll()
                             .anyRequest().authenticated();
+                    // .anyRequest().permitAll();
                 });
 
 
@@ -63,7 +73,7 @@ public class SecurityConfig {
         // CSRF Protection is enabled by default in Spring Security.
         // We need to disable it for our REST API as we are not using cookies for session management.
         // Also, our session management is stateless.
-        http.csrf(csrf -> csrf.ignoringRequestMatchers(AUTH_WHITELIST));
+        http.csrf(csrf -> csrf.ignoringRequestMatchers(merged_array));
         http.csrf(AbstractHttpConfigurer::disable);
 
         http.headers((headers) -> headers.defaultsDisabled() // Disable default headers
@@ -81,7 +91,7 @@ public class SecurityConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:3000")
+                        .allowedOrigins("http://localhost:3000", "https://wiserate-b64eaf61bfea.herokuapp.com")
                         .allowedMethods("GET", "POST", "PUT", "DELETE")
                         .allowedHeaders("*")
                         .allowCredentials(true)
@@ -108,25 +118,24 @@ public class SecurityConfig {
 //    }
 
     // IGNORING SECURITY
-    // @Bean
-    // public WebSecurityCustomizer webSecurityCustomizer() {
-    //     //  ONE WAY ->
-    //     //  return (web) -> web.ignoring().requestMatchers("/css/**", "/js/**", "/images/**");
-    //
-    //     //  ANOTHER WAY ->
-    //     WebSecurityCustomizer webSecurityCustomizer = new WebSecurityCustomizer() {
-    //         @Override
-    //         public void customize(WebSecurity web) {
-    //             web.ignoring().requestMatchers(
-    //                     "/swagger-ui/**",
-    //                     "/v3/api-docs/**",
-    //                     "/v3/api-docs.yaml",
-    //                     "/swagger-ui.html"
-    //             );
-    //         }
-    //     };
-    //     return webSecurityCustomizer;
-    // }
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        //  ONE WAY ->
+        //  return (web) -> web.ignoring().requestMatchers("/css/**", "/js/**", "/images/**");
+
+        //  ANOTHER WAY ->
+        WebSecurityCustomizer webSecurityCustomizer = new WebSecurityCustomizer() {
+            @Override
+            public void customize(WebSecurity web) {
+                web.ignoring().requestMatchers(
+                        // FRONTEND STATIC FILES
+                        "/css/**",
+                        "/js/**"
+                );
+            }
+        };
+        return webSecurityCustomizer;
+    }
 
 
 }
