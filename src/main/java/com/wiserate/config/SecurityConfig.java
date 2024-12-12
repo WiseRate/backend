@@ -55,6 +55,7 @@ public class SecurityConfig {
                             .anyRequest().authenticated();
                 });
 
+
         //  by making stateless we don't have to remember user state,
         //  each request will be verified independently.
         http.sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
