@@ -7,6 +7,7 @@ import com.wiserate.exceptions.mUser.ErrorResponse;
 import com.wiserate.exceptions.mUser.UnauthorizedException;
 import com.wiserate.models.MUser;
 import com.wiserate.services.MUserService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -66,7 +67,7 @@ public class UserController {
 
     // CREATE USER
     @PostMapping("/create")
-    public ResponseEntity<?> createUser(@RequestBody UserCreationRequest userCreationRequest) {
+    public ResponseEntity<?> createUser(@Valid @RequestBody UserCreationRequest userCreationRequest) {
         try {
             System.out.println(userCreationRequest.getUsername());
             MUser user = new MUser(userCreationRequest.getUsername(), userCreationRequest.getPassword(), userCreationRequest.getEmail());
