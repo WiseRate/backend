@@ -34,6 +34,7 @@ public class SecurityConfig {
             "/user/create",
             "/api/v1/loan",
             "/h2-console/**",
+            "/api/h2-console/**",
             "/api/v1/bank-rates",
             "/api/v1/bank-rates-simple",
             "/swagger-ui/**",
@@ -58,7 +59,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests((requests) -> {
                     requests
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()     // Allow all OPTIONS requests for CORS
-//                           .requestMatchers("/h2-console/**").permitAll()
+                            .requestMatchers("/api/h2-console/**").permitAll()
 //                             .requestMatchers("/admin/**").hasAnyRole(String.valueOf(MUserRoles.ADMIN))
                             .requestMatchers(merged_array).permitAll()
                             .anyRequest().authenticated();
