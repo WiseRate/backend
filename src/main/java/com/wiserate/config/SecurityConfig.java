@@ -92,7 +92,7 @@ public class SecurityConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:3000", "https://wiserate-b64eaf61bfea.herokuapp.com", "http://127.0.0.1:3000")
+                        .allowedOrigins("http://localhost:3000", "https://wiserate-b64eaf61bfea.herokuapp.com", "http://127.0.0.1:3000", "https://mortgage.himanshujain.me")
                         .allowedMethods("GET", "POST", "PUT", "DELETE")
                         .allowedHeaders("*")
                         .allowCredentials(true)
